@@ -94,6 +94,35 @@
   </footer>
 </div>
 
+<!-- Posten, öppnad från sin rubrik. Skalet står här och fylls av motorn;
+     innehållet är postens, formen är motorns. -->
+<div class="slöja" id="slöja" role="dialog" aria-modal="true" aria-labelledby="pp-titel" aria-hidden="true">
+  <article class="postpanel" id="postpanel">
+    <div class="pp-handtag" aria-hidden="true"></div>
+    <div class="pp-huvud">
+      <div class="pp-brickor" id="pp-brickor"></div>
+      <button class="pp-stang" type="button" id="pp-stang" aria-label="Stäng">✕</button>
+    </div>
+    <div class="pp-kropp" id="pp-kropp">
+      <h2 id="pp-titel"></h2>
+      <div id="pp-flagga"></div>
+      <p class="pp-brod" id="pp-brod"></p>
+      <div class="pp-hink" id="pp-hink"></div>
+      <dl class="pp-fakta" id="pp-fakta"></dl>
+      <div id="pp-promptruta"></div>
+    </div>
+    <div class="pp-andringar" id="pp-andringar">
+      <div id="pp-andringar-text"></div>
+      <button class="angra" type="button" id="pp-angra">Ångra</button>
+    </div>
+    <div class="pp-fot">
+      <a class="knapp-primar" id="pp-primar" target="_blank" rel="noopener"></a>
+      <p class="pp-lapp"><button class="visa-prompt" type="button" id="pp-visa-prompt">Visa prompten</button></p>
+    </div>
+  </article>
+</div>
+<div class="valjare" id="valjare" role="listbox" aria-label="Välj värde"></div>
+
 <script>
 // Insvept så att sidans variabler inte blir globala. Ingen 'use strict':
 // motorn kördes utan den innan uppdelningen, och det här bygget ska bete sig

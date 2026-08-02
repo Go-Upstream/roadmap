@@ -70,19 +70,6 @@
       .replace(/(^|[\s(«"'—–])\*([^*\n]+)\*(?=$|[\s)»"'.,;:!?—–])/g, '$1<i>$2</i>');
   }
 
-  /**
-   * Samma tre former, men markörerna bara borttagna.
-   *
-   * För ett `title`-attribut, som visar text och inte HTML. Utan det här står
-   * asteriskerna kvar i tooltipen medan de renderas i kortet — två olika svar
-   * på samma fråga. Anroparen escapar resultatet.
-   */
-  function utanMd(text) {
-    return String(text)
-      .replace(/`([^`]+)`/g, '$1')
-      .replace(/\*\*([^*]+)\*\*/g, '$1')
-      .replace(/(^|[\s(«"'—–])\*([^*\n]+)\*(?=$|[\s)»"'.,;:!?—–])/g, '$1$2');
-  }
 
   // ── Djuplänkar · öppnar en session med posten förifylld ──────────
   // Prompten skickas inte automatiskt, och texten i den hör till projektet,
@@ -101,6 +88,11 @@
   let vy = 'kort';       // 'kort' | 'tabell' | 'kanban'
   let grupp = 'tid';     // 'tid' (fas) | 'omrade'
   let dragIndex = null;
+  // Sant medan ett kanbankort dras. Rubriken öppnar panelen, och utan den här
+  // skulle ett släpp som råkar bli ett klick göra båda sakerna. Flaggan nollas
+  // både av `dragend` och av nästa `pointerdown`: fastnade den skulle rubriken
+  // sluta öppna panelen — tyst, och för alltid.
+  let dragPagar = false;
   let sortNyckel = 'fas';
   let sortRiktning = 'asc';
 
@@ -144,7 +136,8 @@
     const f = FAS[it.fas];
     return `
       <article class="kort" style="--c:${f.color}">
-        <h3>${hl(it.t)}</h3>
+        <h3 role="button" tabindex="0" data-oppna="${ITEMS.indexOf(it)}"
+            aria-label="Öppna posten ${esc(it.t)}">${hl(it.t)}</h3>
         <p class="brod">${md(hl(it.d))}</p>
         <div class="fot">
           <span class="bricka"><span class="bprick"></span>${f.label}</span>
@@ -292,10 +285,10 @@
   function radHTML(it) {
     const f = FAS[it.fas];
     return `
-      <tr style="--c:${f.color}" title="${esc(utanMd(it.d))}">
-        <td class="t-rubrik-cell"><a class="t-start" href="${esc(sessionURL(it))}" target="_blank" rel="noopener"
-              title="Öppnar claude.ai/code med en förifylld prompt — du granskar den innan sessionen startar"
-              >${hl(it.t)} <span class="pil" aria-hidden="true">→</span></a></td>
+      <tr style="--c:${f.color}">
+        <td class="t-rubrik-cell"><button type="button" class="t-start" data-oppna="${ITEMS.indexOf(it)}"
+              aria-label="Öppna posten ${esc(it.t)}"
+              >${hl(it.t)} <span class="pil" aria-hidden="true">→</span></button></td>
         <td><span class="bricka" style="--c:${f.color}"><span class="bprick"></span>${f.label}</span>${obesvaradHTML(it)}</td>
         <td class="t-mono">${hl(it.omr)}</td>
         <td>${prioHTML(it, true)}</td>
@@ -336,8 +329,9 @@
       ? `<span class="bricka" style="--c:${f.color}"><span class="bprick"></span>${f.label}</span>`
       : `<span class="kategori" style="margin:0">${hl(it.omr)}</span>`;
     return `
-      <article class="kkort" draggable="true" data-i="${ITEMS.indexOf(it)}" style="--c:${f.color}" title="${esc(utanMd(it.d))}">
-        <div class="krubrik">${hl(it.t)}</div>
+      <article class="kkort" draggable="true" data-i="${ITEMS.indexOf(it)}" style="--c:${f.color}">
+        <div class="krubrik" role="button" tabindex="0" data-oppna="${ITEMS.indexOf(it)}"
+             aria-label="Öppna posten ${esc(it.t)}">${hl(it.t)}</div>
         <div class="kmeta">${obesvaradHTML(it)}${prioHTML(it, false)}${meta}
           <a class="kstarta" href="${esc(sessionURL(it))}" draggable="false" target="_blank" rel="noopener"
              title="Öppnar claude.ai/code med en förifylld prompt" aria-label="Starta session för ${esc(it.t)}"
@@ -501,11 +495,13 @@
     const kort = e.target.closest('.kkort');
     if (!kort) return;
     dragIndex = +kort.dataset.i;
+    dragPagar = true;
     e.dataTransfer.effectAllowed = 'move';
     e.dataTransfer.setData('text/plain', kort.dataset.i);
     kort.classList.add('dras');
   });
   kanban.addEventListener('dragend', (e) => {
+    dragPagar = false;
     const kort = e.target.closest('.kkort');
     if (kort) kort.classList.remove('dras');
     kanban.querySelectorAll('.kspalt.slappyta').forEach(s => s.classList.remove('slappyta'));
@@ -572,6 +568,240 @@
     tema = document.documentElement.dataset.theme === 'light' ? 'light' : 'dark';
   }
   sattTema(tema, false);
+
+  // ── Posten, öppnad från sin rubrik ──────────────────────────────
+  /**
+   * Förklaringen bakom en post låg förut i webbläsarens `title`-tooltip. Den
+   * bryter aldrig rad, kommer efter en sekunds hovrande, försvinner när musen
+   * rör sig, och **på en telefon finns den inte alls** — det går inte att
+   * hovra. Ingenting av det går att styla, så den är utbytt och inte
+   * förbättrad.
+   *
+   * Panelen svarar dessutom på tre saker tooltipen inte kunde: vad hinken
+   * betyder (texten står i konfigen och syntes bara som ännu en tooltip), vad
+   * prio betyder *inom* hinken, och vilken leverans en öppen fråga blockerar.
+   *
+   * **Sidan sparar ingenting.** Den byggs om ur repot, så ett sparat värde
+   * hade skrivits över tyst vid nästa bygge. Ett val i panelen skriver därför
+   * om prompten, aldrig posten — samma mekanik som en flytt i Kanban, och
+   * samma skydd mot att trycka fel: ändringen går genom en session som
+   * läsaren granskar först.
+   */
+  const slöja = document.getElementById('slöja');
+  const postpanel = document.getElementById('postpanel');
+  const valjare = document.getElementById('valjare');
+
+  let aktiv = null;      // posten som visas
+  let utkast = {};       // valt men inte skickat
+  let sistFokus = null;  // dit fokus går tillbaka när panelen stängs
+
+  const ppNu = (falt) => (falt in utkast ? utkast[falt] : aktiv[falt]);
+
+  /** Fälten som går att ändra, och vad väljaren erbjuder för var och en. */
+  const PP_FALT = {
+    fas: () => ({
+      rubrik: 'Vilken leverans?',
+      val: FAS_ORDNING.map(k => ({ v: k, label: FAS[k].label, farg: FAS[k].color })),
+    }),
+    omr: () => ({
+      rubrik: 'Vilket område?',
+      // Konfigens ordning först, sedan områden som bara finns i datan.
+      val: [...new Set([...OMRADE_ORDNING, ...ITEMS.map(i => i.omr)])]
+        .map(o => ({ v: o, label: o, farg: 'var(--ink-3)' })),
+    }),
+    prio: () => ({
+      rubrik: 'Ordningen inom leveransen',
+      val: Object.keys(PRIO_ORDNING).map(p => ({ v: p, label: p, farg: 'var(--ink-3)' })),
+    }),
+    obesvarad: () => ({
+      rubrik: 'Väntar posten på ett svar?',
+      val: [
+        { v: false, label: 'Nej — nästa steg är att bygga', farg: 'var(--ink-3)' },
+        { v: true, label: 'Ja — ' + OBESVARAD.label.toLowerCase(), farg: 'var(--serious)' },
+      ],
+    }),
+  };
+
+  const ppUrsprung = (falt) => (falt === 'obesvarad' ? !!aktiv[falt] : aktiv[falt]);
+
+  /** Ändringarna i ord — samma meningar går in i prompten och i raden. */
+  function ppAndringar() {
+    const lista = [];
+    if ('fas' in utkast)
+      lista.push(`flytta från leveransen "${FAS[aktiv.fas].label}" till "${FAS[utkast.fas].label}"`);
+    if ('omr' in utkast)
+      lista.push(`byt område från "${aktiv.omr}" till "${utkast.omr}"`);
+    if ('prio' in utkast)
+      lista.push(`sätt prio till ${utkast.prio} (den var ${aktiv.prio || 'inte satt'})`);
+    if ('obesvarad' in utkast)
+      lista.push(utkast.obesvarad
+        ? `markera posten som ${OBESVARAD.label.toLowerCase()} — nästa steg är ett svar, inte kod`
+        : `ta bort flaggan ${OBESVARAD.label.toLowerCase()}, frågan är besvarad`);
+    return lista;
+  }
+
+  /** Prompten är projektets, precis som överallt annars i motorn. */
+  function ppPrompt() {
+    const lista = ppAndringar();
+    return lista.length ? K.prompt.uppdatera(aktiv, lista) : K.prompt.session(aktiv, FAS);
+  }
+
+  function ppRitaAndringar() {
+    const lista = ppAndringar();
+    const primar = document.getElementById('pp-primar');
+    primar.innerHTML = (lista.length ? 'Öppna session med ändringen' : 'Starta session') +
+      ' <span class="pil" aria-hidden="true">→</span>';
+    primar.href = lank(ppPrompt());
+    const rutan = document.getElementById('pp-andringar');
+    if (!lista.length) { rutan.removeAttribute('data-öppen'); return; }
+    rutan.setAttribute('data-öppen', '');
+    document.getElementById('pp-andringar-text').innerHTML =
+      `<b>Inte sparat.</b> ${esc(lista.join('; '))} — ändringen görs av sessionen, i det ` +
+      `dokument som äger uppgiften och i posternas fil.`;
+  }
+
+  function ppVisaPrompt(behall) {
+    const rutan = document.getElementById('pp-promptruta');
+    if (rutan.innerHTML && !behall) { rutan.innerHTML = ''; return; }
+    rutan.innerHTML = `<div class="pp-prompt">${esc(ppPrompt())}</div>`;
+  }
+
+  function ppRita() {
+    const f = FAS[ppNu('fas')];
+    const obesvarad = !!ppNu('obesvarad');
+    const andrad = (falt) => (falt in utkast ? ' data-andrad' : '');
+    postpanel.style.setProperty('--c', f.color);
+
+    document.getElementById('pp-brickor').innerHTML =
+      `<button type="button" class="bricka" data-valj="fas"${andrad('fas')} style="--c:${f.color}" ` +
+        `title="Byt leverans"><span class="bprick"></span>${esc(f.label)}` +
+        `<span class="karet" aria-hidden="true">▾</span></button>` +
+      `<button type="button" class="obesvarad${obesvarad ? '' : ' tom'}" data-valj="obesvarad"${andrad('obesvarad')} ` +
+        `title="${obesvarad ? 'Ta bort flaggan' : 'Markera som ' + esc(OBESVARAD.label.toLowerCase())}">` +
+        `${esc(OBESVARAD.label)}<span class="karet" aria-hidden="true">▾</span></button>`;
+
+    document.getElementById('pp-titel').textContent = aktiv.t;
+
+    document.getElementById('pp-flagga').innerHTML = obesvarad
+      ? `<div class="pp-flagga"><span class="tecken" aria-hidden="true">⚑</span><div>` +
+        `<b>${esc(OBESVARAD.desc)}</b> Den blockerar ${esc(f.label)}.</div></div>`
+      : '';
+
+    document.getElementById('pp-brod').innerHTML = md(esc(aktiv.d));
+
+    document.getElementById('pp-hink').innerHTML =
+      `<span class="etikett" style="--c:${f.color}">${esc(f.label)}</span><p>${esc(f.desc)}</p>`;
+
+    const prio = ppNu('prio');
+    document.getElementById('pp-fakta').innerHTML =
+      `<dt>Område</dt><dd><button type="button" class="faltknapp" data-valj="omr"${andrad('omr')} title="Byt område">` +
+        `<span class="stark">${esc(ppNu('omr'))}</span><span class="karet" aria-hidden="true">▾</span></button></dd>` +
+      `<dt>Prio</dt><dd>` +
+        `<button type="button" class="faltknapp" data-valj="prio"${andrad('prio')} title="Byt prio">` +
+        (prio ? `<span class="prio" data-p="${esc(prio)}" aria-hidden="true">` +
+                `<span class="staplar"><i></i><i></i><i></i></span></span>&nbsp;` : '') +
+        `<span class="stark">${esc(prio || 'inte satt')}</span>&nbsp;` +
+        `<span class="inom">— ordningen inom ${esc(f.label)}</span>` +
+        `<span class="karet" aria-hidden="true">▾</span></button></dd>` +
+      `<dt>Källa</dt><dd class="kalla">${esc(aktiv.k)}</dd>`;
+
+    ppRitaAndringar();
+    if (document.getElementById('pp-promptruta').innerHTML) ppVisaPrompt(true);
+  }
+
+  function ppOppnaValjare(falt, ankare) {
+    const { rubrik, val } = PP_FALT[falt]();
+    const aktuellt = falt === 'obesvarad' ? !!ppNu(falt) : ppNu(falt);
+    valjare.dataset.falt = falt;
+    valjare.innerHTML = `<span class="rubrik">${esc(rubrik)}</span>` + val.map(o =>
+      `<button type="button" role="option" aria-checked="${o.v === aktuellt}" data-v="${esc(o.v)}" ` +
+      `style="--c:${o.farg}"><span class="markor" aria-hidden="true"></span>${esc(o.label)}` +
+      (o.v === ppUrsprung(falt) ? '<span class="nu">nu</span>' : '') + `</button>`
+    ).join('');
+
+    const r = ankare.getBoundingClientRect();
+    valjare.setAttribute('data-öppen', '');
+    const h = valjare.offsetHeight, b = valjare.offsetWidth;
+    valjare.style.top = (r.bottom + 8 + h > innerHeight ? Math.max(8, r.top - h - 8) : r.bottom + 8) + 'px';
+    valjare.style.left = Math.max(8, Math.min(r.left, innerWidth - b - 8)) + 'px';
+    valjare.querySelector('button')?.focus();
+  }
+
+  const ppStangValjare = () => valjare.removeAttribute('data-öppen');
+
+  function ppOppna(it, fran) {
+    aktiv = it;
+    utkast = {};
+    sistFokus = fran || null;
+    document.getElementById('pp-promptruta').innerHTML = '';
+    ppRita();
+    slöja.setAttribute('data-öppen', '');
+    slöja.setAttribute('aria-hidden', 'false');
+    document.documentElement.setAttribute('data-panel', '');
+    document.getElementById('pp-kropp').scrollTop = 0;
+    document.getElementById('pp-stang').focus();
+  }
+
+  function ppStang() {
+    slöja.removeAttribute('data-öppen');
+    slöja.setAttribute('aria-hidden', 'true');
+    document.documentElement.removeAttribute('data-panel');
+    ppStangValjare();
+    if (sistFokus && document.contains(sistFokus)) sistFokus.focus();
+    sistFokus = null;
+  }
+
+  valjare.addEventListener('click', (e) => {
+    const b = e.target.closest('button[data-v]');
+    if (!b) return;
+    const falt = valjare.dataset.falt;
+    const varde = falt === 'obesvarad' ? b.dataset.v === 'true' : b.dataset.v;
+    // Väljs ursprungsvärdet tillbaka finns ingen ändring kvar att skicka.
+    if (varde === ppUrsprung(falt)) delete utkast[falt]; else utkast[falt] = varde;
+    ppStangValjare();
+    ppRita();
+    postpanel.querySelector(`[data-valj="${falt}"]`)?.focus();
+  });
+
+  postpanel.addEventListener('click', (e) => {
+    const knapp = e.target.closest('[data-valj]');
+    if (!knapp) return;
+    if (valjare.hasAttribute('data-öppen') && valjare.dataset.falt === knapp.dataset.valj) ppStangValjare();
+    else ppOppnaValjare(knapp.dataset.valj, knapp);
+  });
+
+  document.getElementById('pp-angra').addEventListener('click', () => { utkast = {}; ppRita(); });
+  document.getElementById('pp-visa-prompt').addEventListener('click', () => ppVisaPrompt(false));
+  document.getElementById('pp-stang').addEventListener('click', ppStang);
+  slöja.addEventListener('click', (e) => { if (e.target === slöja) ppStang(); });
+  addEventListener('resize', ppStangValjare);
+
+  /* Rubriken i alla tre vyerna. Delegerat, eftersom vyerna ritas om.
+     I Kanban är det **bara rubriken** som öppnar — kortet i övrigt är
+     dragbart, och de två gesterna skulle annars krocka på en telefon.
+     dragIndex är satt under ett pågående drag och stänger dörren. */
+  // En ny nedtryckning är en ny gest: skulle `dragend` ha uteblivit står
+  // flaggan inte i vägen för nästa klick.
+  document.addEventListener('pointerdown', () => { dragPagar = false; }, true);
+
+  document.addEventListener('click', (e) => {
+    const traff = e.target.closest('[data-oppna]');
+    if (!traff || dragPagar) return;
+    e.preventDefault();
+    ppOppna(ITEMS[+traff.dataset.oppna], traff);
+  });
+
+  document.addEventListener('keydown', (e) => {
+    const traff = e.target.closest?.('[data-oppna]');
+    if (traff && (e.key === 'Enter' || e.key === ' ')) {
+      e.preventDefault();
+      ppOppna(ITEMS[+traff.dataset.oppna], traff);
+      return;
+    }
+    if (e.key !== 'Escape') return;
+    if (valjare.hasAttribute('data-öppen')) ppStangValjare();
+    else if (slöja.hasAttribute('data-öppen')) ppStang();
+  });
 
   lasVal();
   gruppTid.setAttribute('aria-pressed', String(grupp === 'tid'));

@@ -102,8 +102,22 @@ och går att kopiera rakt av.
    **Beskrivningen tål `**fet**`, `*kursiv*` och `` `kod` ``** — de tre, och
    inga fler. Texten escapas först och taggarna skrivs efteråt, så en post kan
    aldrig smuggla in HTML. Rubriker, listor och länkar hör hemma i filen posten
-   kommer ur; `k` pekar dit. I tabellens och Kanbans tooltip tas markörerna
-   bort i stället, eftersom ett `title`-attribut visar text och inte HTML.
+   kommer ur; `k` pekar dit.
+
+   **En tryckning på en posts rubrik öppnar den i en panel** — i alla tre
+   vyerna, och i Kanban är det bara rubriken, eftersom kortet i övrigt är
+   dragbart. Panelen visar hela beskrivningen, vad hinken betyder (`desc` ur
+   konfigens `faser`), vad `prio` betyder *inom* hinken, och vilken leverans
+   en öppen fråga blockerar. Den ersatte webbläsarens `title`-tooltip, som
+   inte bryter rad, kommer efter en sekunds hovrande — och **på en telefon
+   inte finns alls**, eftersom det inte går att hovra.
+
+   **Fyra fält går att ändra i panelen**: hinken, området, prio och flaggan.
+   Ett val skriver om **prompten**, aldrig posten — sidan byggs ur repot, så
+   ett sparat värde hade skrivits över tyst vid nästa bygge. Det valda får en
+   streckad ram, en rad säger vad som ändrats, och knappen byter till «Öppna
+   session med ändringen», som öppnar `K.prompt.uppdatera`. Samma mekanik som
+   en flytt i Kanban, och samma skydd mot att trycka fel.
 
    Det snabbaste sättet att få den första versionen är att låta en session
    läsa projektets egna dokument och skriva filen. Räkna med att rätta den

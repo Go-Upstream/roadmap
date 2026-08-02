@@ -62,7 +62,7 @@ kontroll("temats fastoken finns", sida.includes("--fas-nartid"));
 // att någon skriver tillbaka `hl(it.d)` och tar bort renderingen, vilket är
 // den regression som annars syns som asterisker mitt i en mening.
 kontroll("kortet renderar beskrivningen genom md()", sida.includes("md(hl(it.d))"));
-kontroll("tooltipen rensar markdown i stället", sida.includes("esc(utanMd(it.d))"));
+kontroll("panelen renderar beskrivningen genom md()", sida.includes("md(esc(aktiv.d))"));
 
 // Och funktionerna själva, körda ur motorns källa. Rena funktioner över en
 // sträng, så de går att prova utan DOM — och de är det enda stället där HTML
@@ -77,7 +77,6 @@ function hamta(namn: string): (s: string) => string {
   return new Function(m[1]!, m[2]!) as (s: string) => string;
 }
 const md = hamta("md");
-const utanMd = hamta("utanMd");
 
 kontroll("md: fetstil", md("en **stark** sak") === "en <b>stark</b> sak");
 kontroll("md: kursiv", md("en *lutad* sak") === "en <i>lutad</i> sak");
@@ -87,8 +86,6 @@ kontroll("md: markörerna över en radbrytning parar inte ihop sig",
   md("en * rad\nen * till") === "en * rad\nen * till");
 kontroll("md: skriver ingen HTML som inte är dess egen",
   md("&lt;script&gt; **fet**") === "&lt;script&gt; <b>fet</b>");
-kontroll("utanMd: markörerna bort, inga taggar in",
-  utanMd("en **stark** och `kod`") === "en stark och kod");
 
 // Flaggan «obesvarad». Den är ett tillstånd på posten och inte en fas — en
 // fråga hör till den leverans den blockerar — så den måste synas i alla tre
@@ -105,6 +102,34 @@ for (const [vy, monster] of [
 kontroll("obesvarade går att filtrera på", sida.includes("obesvaradFilter"));
 kontroll("etiketten kommer ur konfigen", sida.includes("K.obesvarad"));
 kontroll("exemplets fråga bär flaggan", /obesvarad:\s*true/.test(sida));
+
+// Panelen bakom en rubrik. Den ersatte webbläsarens `title`-tooltip, som inte
+// finns på en telefon — så en regression här tar bort förklaringen helt för
+// den som läser i mobilen, utan att något ser trasigt ut på en dator.
+kontroll("skalet bär panelen", sida.includes('id="postpanel"') && sida.includes('id="valjare"'));
+for (const [vy, monster] of [
+  ["kortet", '<h3 role="button" tabindex="0" data-oppna='],
+  ["tabellen", '<button type="button" class="t-start" data-oppna='],
+  ["kanban", '<div class="krubrik" role="button" tabindex="0" data-oppna='],
+] as const) {
+  kontroll(`rubriken i ${vy} öppnar panelen`, sida.includes(monster));
+}
+// I Kanban är det bara rubriken som öppnar — kortet i övrigt är dragbart, och
+// de två gesterna skulle annars krocka på en telefon.
+kontroll("kanbankortet i övrigt öppnar inte panelen",
+  !/<article class="kkort"[^>]*data-oppna/.test(sida));
+kontroll("ett pågående drag stänger dörren", sida.includes("if (!traff || dragPagar) return;"));
+kontroll("dragflaggan kan inte fastna", sida.includes("dragPagar = false; }, true)"));
+// Fyra fält går att ändra, och ändringen skrivs i prompten — aldrig i posten.
+for (const falt of ["fas", "omr", "prio", "obesvarad"]) {
+  kontroll(`fältet ${falt} går att ändra`, sida.includes(`data-valj="${falt}"`));
+}
+kontroll("ändringen går genom konfigens uppdatera-prompt", sida.includes("K.prompt.uppdatera(aktiv, lista)"));
+kontroll("sidan sparar inte panelens val",
+  !/localStorage\.setItem\([^)]*utkast/.test(sida));
+// Tooltiparna som panelen ersatte ska vara borta, annars visas två svar på
+// samma fråga — ett avhugget och ett helt.
+kontroll("radens och kanbankortets tooltip är borta", !sida.includes("utanMd"));
 
 // Ingenting hämtas utifrån. Tre former, eftersom de blockeras var för sig.
 const externa: string[] = [];
