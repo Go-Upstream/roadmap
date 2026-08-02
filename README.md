@@ -70,8 +70,16 @@ och går att kopiera rakt av.
      `claude.ai`, och `localStorage` är per origin, inte per sida. Två projekt
      med samma nyckel skriver över varandras sparade vy, gruppering och
      temaval.
-   - `faser` och `fasOrdning` — fem räcker långt, men antalet är fritt. Varje
-     fas pekar på en `--fas-*`-token i temat.
+   - `faser` och `fasOrdning` — **projektets leveranser, i ordning, plus två
+     tillstånd.** `levererat` och `uteslutet` är tillstånd; resten är
+     leveranser, och den första är per definition den som pågår. Ett projekt
+     behöver alltså ingen fas som heter «närtid» — den heter Pilot, Etapp 4
+     eller vad leveransen nu kallas i projektets egna dokument. Sist bör det
+     stå en hink för det som inte är placerat; «Obestämt» är ett bra namn,
+     eftersom den då ställer en fråga i stället för att vara en skräphög.
+     Varje fas pekar på en `--fas-*`-token i temat.
+   - `obesvarad` — etiketten för flaggan nedan. Utelämnas den blir det
+     «Öppen fråga».
    - `omradeOrdning` — områdena i den ordning de ska stå. Ett område som
      saknas här hamnar sist, inte utanför.
    - `prioOrdning` — orden för prioritet och deras inbördes ordning.
@@ -84,6 +92,12 @@ och går att kopiera rakt av.
    `t` (rubrik), `d` (beskrivning), `fas`, `omr` (område), `prio` och
    `k` (källa — vilket dokument posten kommer ur). `fas` och `omr` måste finnas
    i konfigens listor.
+
+   **En post kan bära `obesvarad: true`.** Det är en post vars nästa steg är
+   ett svar och inte ett bygge — och den är **en flagga, inte en fas**, just
+   för att en fråga hör till den leverans den blockerar. Låg frågorna i en egen
+   hink gick det att se att de fanns, men inte vad de stod i vägen för. Brickan
+   ritas i alla tre vyerna och får en egen ruta i översikten att filtrera på.
 
    **Beskrivningen tål `**fet**`, `*kursiv*` och `` `kod` ``** — de tre, och
    inga fler. Texten escapas först och taggarna skrivs efteråt, så en post kan

@@ -29,12 +29,18 @@ const K = {
       desc: 'Näst på tur.' },
     senare:    { label: 'Senare', color: 'var(--fas-senare)',
       desc: 'Medvetet framskjutet.' },
-    fraga:     { label: 'Öppen fråga', color: 'var(--fas-fraga)',
-      desc: 'Obesvarad, och får inte gissas.' },
     uteslutet: { label: 'Uteslutet', color: 'var(--fas-uteslutet)',
       desc: 'Aktivt bortvalt, med skälet sparat.' },
   },
-  fasOrdning: ['nartid', 'fraga', 'senare', 'levererat', 'uteslutet'],
+  fasOrdning: ['nartid', 'senare', 'levererat', 'uteslutet'],
+
+  // Etiketten för posternas obesvarad-flagga. Utelämnas den använder motorn
+  // «Öppen fråga». Flaggan är inte en fas: en fråga hör till den leverans den
+  // blockerar, och det är just det den ska visa.
+  obesvarad: {
+    label: 'Öppen fråga',
+    desc: 'Nästa steg är ett svar, inte kod. Den blockerar leveransen den står i.',
+  },
 
   omradeOrdning: ['Produkt', 'Drift'],
 

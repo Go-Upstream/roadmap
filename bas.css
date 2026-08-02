@@ -230,6 +230,20 @@ mark { background: var(--accent-botten); color: var(--ink); border-radius: 3px; 
   border: 1px solid var(--hair); border-radius: 5px;
   padding: .05em .35em;
 }
+/* Brickan för en obesvarad post. --serious och inte --crit: en öppen fråga är
+   inte ett fel, den är ett svar som fattas. Ihålig, till skillnad från
+   fasbrickan som bär en fylld prick — de står bredvid varandra och ska gå att
+   skilja åt med formen, inte bara med kulören. */
+.obesvarad {
+  display: inline-flex; align-items: center; flex-shrink: 0;
+  font-family: var(--fakta); font-size: var(--grad-etikett);
+  letter-spacing: .05em; line-height: 1;
+  color: var(--serious); border: 1px solid var(--serious);
+  border-radius: var(--radie-pill); padding: 3px 8px;
+  white-space: nowrap;
+}
+.ruta.obesvarad-ruta { --c: var(--serious); }
+
 .kort .fot { display: flex; align-items: center; gap: var(--rum-2); flex-wrap: wrap; margin-top: auto; padding-top: var(--rum-1); }
 
 .bricka {

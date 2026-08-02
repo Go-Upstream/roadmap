@@ -14,6 +14,22 @@
   const PRIO_ORDNING = K.prioOrdning;
   const VAL_NYCKEL = K.nyckel + '-val';
   const TEMA_NYCKEL = K.nyckel + '-tema';
+  /**
+   * Flaggan «obesvarad»: en post vars nästa steg är ett svar, inte ett bygge.
+   *
+   * Den är ett **tillstånd på posten och inte en fas**, eftersom en fråga hör
+   * till den leverans den blockerar. Låg den som en egen fas gick det inte att
+   * se vad den stod i vägen för — bara att den fanns.
+   *
+   * Etiketten är projektets, med ett förval: motorn känner inget projekt, men
+   * «öppen fråga» är ett allmänt nog begrepp för att inte kräva konfiguration
+   * av den som bara vill komma igång.
+   */
+  const OBESVARAD = Object.assign(
+    { label: 'Öppen fråga', desc: 'Nästa steg är ett svar, inte kod. Den blockerar leveransen den står i.' },
+    K.obesvarad || {},
+  );
+
   const esc = (s) => String(s).replace(/[&<>"]/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;' }[c]));
 
   // Escapa och markera sökträffar — skiftlägesokänsligt, alla förekomster.
@@ -79,6 +95,7 @@
 
   // ── Läge ────────────────────────────────────────────────────────
   let fasFilter = null;
+  let obesvaradFilter = false;
   let fraga = '';        // normaliserad sökning
   let fragaRa = '';      // som skriven, för visning
   let vy = 'kort';       // 'kort' | 'tabell' | 'kanban'
@@ -102,11 +119,20 @@
   }
 
   const traffar = (it) => !fraga ||
-    (it.t + ' ' + it.d + ' ' + it.omr + ' ' + it.k + ' ' + FAS[it.fas].label).toLowerCase().includes(fraga);
+    (it.t + ' ' + it.d + ' ' + it.omr + ' ' + it.k + ' ' + FAS[it.fas].label +
+     (it.obesvarad ? ' ' + OBESVARAD.label : '')).toLowerCase().includes(fraga);
 
   // Levererat är dolt som förval — det som är gjort ska inte konkurrera med det som återstår.
   const synliga = () => (fasFilter ? ITEMS.filter(i => i.fas === fasFilter)
-    : ITEMS.filter(i => fraga || i.fas !== 'levererat')).filter(traffar);
+    : ITEMS.filter(i => fraga || i.fas !== 'levererat'))
+    .filter(i => !obesvaradFilter || i.obesvarad)
+    .filter(traffar);
+
+  /** Brickan som säger att posten är obesvarad. Tom sträng när den inte är det. */
+  function obesvaradHTML(it) {
+    if (!it.obesvarad) return '';
+    return `<span class="obesvarad" title="${esc(OBESVARAD.desc)}">${esc(OBESVARAD.label)}</span>`;
+  }
 
   function prioHTML(it, tom) {
     if (!it.prio) return tom ? '<span class="t-tom">—</span>' : '';
@@ -122,6 +148,7 @@
         <p class="brod">${md(hl(it.d))}</p>
         <div class="fot">
           <span class="bricka"><span class="bprick"></span>${f.label}</span>
+          ${obesvaradHTML(it)}
           ${prioHTML(it, false)}
           <span class="kategori">${hl(it.omr)}</span>
         </div>
@@ -206,19 +233,37 @@
         `title="${esc(FAS[k].desc)} Klicka för att visa bara ${FAS[k].label.toLowerCase()}.">` +
         `<div class="tal">${n}</div><div class="etikett"><span class="prick"></span>${FAS[k].label}</div></button>`;
     });
+    // Obesvarade får en egen ruta, sist och bara om det finns några. Den
+    // filtrerar på tvären mot faserna — en fråga har både en leverans och det
+    // här tillståndet, så rutorna utesluter inte varandra.
+    const nObes = ITEMS.filter(i => i.obesvarad).length;
+    if (nObes) {
+      html += `<button class="ruta obesvarad-ruta${obesvaradFilter ? '' : ' av'}" data-obesvarad="1" ` +
+        `aria-pressed="${obesvaradFilter}" title="${esc(OBESVARAD.desc)} Klicka för att visa bara dem.">` +
+        `<div class="tal">${nObes}</div><div class="etikett"><span class="prick"></span>${esc(OBESVARAD.label)}</div></button>`;
+    }
+
     ov.innerHTML = html;
     ov.querySelectorAll('.ruta').forEach(btn => btn.addEventListener('click', () => {
-      const k = btn.dataset.fas || null;
-      fasFilter = (k === fasFilter) ? null : k;
+      if (btn.dataset.obesvarad) {
+        obesvaradFilter = !obesvaradFilter;
+      } else {
+        const k = btn.dataset.fas || null;
+        fasFilter = (k === fasFilter) ? null : k;
+        if (!k) obesvaradFilter = false;   // «Poster totalt» rensar allt
+      }
       ritaAllt();
     }));
   }
 
   function ritaFilterrad() {
     const el = document.getElementById('filterrad');
-    if (fasFilter) {
+    const delar = [];
+    if (fasFilter) delar.push(`<b>${FAS[fasFilter].label}</b> — ${esc(FAS[fasFilter].desc)}`);
+    if (obesvaradFilter) delar.push(`<b>${esc(OBESVARAD.label)}</b> — ${esc(OBESVARAD.desc)}`);
+    if (delar.length) {
       el.hidden = false;
-      el.innerHTML = `Visar bara <b>${FAS[fasFilter].label}</b> — ${esc(FAS[fasFilter].desc)} ` +
+      el.innerHTML = `Visar bara ${delar.join(' och ')} ` +
         `Klicka rutan igen, eller «Poster totalt», för att rensa.`;
     } else {
       el.hidden = true;
@@ -251,7 +296,7 @@
         <td class="t-rubrik-cell"><a class="t-start" href="${esc(sessionURL(it))}" target="_blank" rel="noopener"
               title="Öppnar claude.ai/code med en förifylld prompt — du granskar den innan sessionen startar"
               >${hl(it.t)} <span class="pil" aria-hidden="true">→</span></a></td>
-        <td><span class="bricka" style="--c:${f.color}"><span class="bprick"></span>${f.label}</span></td>
+        <td><span class="bricka" style="--c:${f.color}"><span class="bprick"></span>${f.label}</span>${obesvaradHTML(it)}</td>
         <td class="t-mono">${hl(it.omr)}</td>
         <td>${prioHTML(it, true)}</td>
         <td class="t-mono t-kalla">${hl(it.k)}</td>
@@ -293,7 +338,7 @@
     return `
       <article class="kkort" draggable="true" data-i="${ITEMS.indexOf(it)}" style="--c:${f.color}" title="${esc(utanMd(it.d))}">
         <div class="krubrik">${hl(it.t)}</div>
-        <div class="kmeta">${prioHTML(it, false)}${meta}
+        <div class="kmeta">${obesvaradHTML(it)}${prioHTML(it, false)}${meta}
           <a class="kstarta" href="${esc(sessionURL(it))}" draggable="false" target="_blank" rel="noopener"
              title="Öppnar claude.ai/code med en förifylld prompt" aria-label="Starta session för ${esc(it.t)}"
              >Starta <span class="pil" aria-hidden="true">→</span></a><a class="kandra" href="${esc(andraURL(it))}" draggable="false" target="_blank" rel="noopener"

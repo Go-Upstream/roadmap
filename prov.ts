@@ -90,6 +90,22 @@ kontroll("md: skriver ingen HTML som inte är dess egen",
 kontroll("utanMd: markörerna bort, inga taggar in",
   utanMd("en **stark** och `kod`") === "en stark och kod");
 
+// Flaggan «obesvarad». Den är ett tillstånd på posten och inte en fas — en
+// fråga hör till den leverans den blockerar — så den måste synas i alla tre
+// vyerna och gå att filtrera på. Ett fel här gör en fråga omöjlig att skilja
+// från en bygguppgift, vilket är precis vad flaggan finns för att undvika.
+kontroll("motorn har en obesvarad-bricka", sida.includes("function obesvaradHTML"));
+for (const [vy, monster] of [
+  ["kortet", "${obesvaradHTML(it)}\n          ${prioHTML"],
+  ["tabellen", "${f.label}</span>${obesvaradHTML(it)}</td>"],
+  ["kanban", '<div class="kmeta">${obesvaradHTML(it)}'],
+] as const) {
+  kontroll(`brickan ritas i ${vy}`, sida.includes(monster));
+}
+kontroll("obesvarade går att filtrera på", sida.includes("obesvaradFilter"));
+kontroll("etiketten kommer ur konfigen", sida.includes("K.obesvarad"));
+kontroll("exemplets fråga bär flaggan", /obesvarad:\s*true/.test(sida));
+
 // Ingenting hämtas utifrån. Tre former, eftersom de blockeras var för sig.
 const externa: string[] = [];
 for (const [monster, vad] of [
