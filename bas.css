@@ -243,6 +243,12 @@ mark { background: var(--accent-botten); color: var(--ink); border-radius: 3px; 
   white-space: nowrap;
 }
 .ruta.obesvarad-ruta { --c: var(--serious); }
+/* Tabellcellen är den enda ytan där fasbrickan och flaggan står som två
+   inline-element utan en flexrad omkring sig — kortets fot och kanbankortets
+   meta har båda gap. Utan den här raden ligger de kant i kant. Måttet är
+   scopat till cellen just därför: lagt på .obesvarad rakt av hade det blivit
+   ett dubbelt mellanrum i de två andra vyerna. */
+table.roadmap td .bricka + .obesvarad { margin-left: var(--rum-2); }
 
 .kort .fot { display: flex; align-items: center; gap: var(--rum-2); flex-wrap: wrap; margin-top: auto; padding-top: var(--rum-1); }
 
