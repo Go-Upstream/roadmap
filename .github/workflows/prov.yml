@@ -1,0 +1,24 @@
+name: Prov
+
+# Motorn används av flera projekt, och ett fel här är ett fel hos dem alla.
+# Provet bygger exempelinstansen och kontrollerar att sidan blev hel — se
+# prov.ts för vad var kontroll skyddar mot.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  prov:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm test
+      - name: Typkontroll
+        run: npx tsc --noEmit

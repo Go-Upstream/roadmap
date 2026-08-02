@@ -1,0 +1,28 @@
+{
+  "name": "@go-upstream/roadmap",
+  "version": "1.0.0",
+  "description": "En läsvy av ett projekts roadmap och backlog: kort, tabell och Kanban över samma poster, byggd till en enda självständig HTML-fil.",
+  "license": "MIT",
+  "type": "module",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Go-Upstream/roadmap.git"
+  },
+  "files": [
+    "bygg.ts",
+    "motor.js",
+    "bas.css",
+    "mall.html",
+    "tema-neutral.css",
+    "README.md"
+  ],
+  "scripts": {
+    "exempel": "tsx bygg.ts exempel/bygge.json",
+    "test": "npm run exempel && tsx prov.ts"
+  },
+  "devDependencies": {
+    "@types/node": "^26.1.2",
+    "tsx": "^4.23.1",
+    "typescript": "^5.6.3"
+  }
+}

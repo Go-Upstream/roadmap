@@ -1,0 +1,9 @@
+{
+  "namn": "Exempelprojektet",
+  "ut": "exempel/byggd/exempel-roadmap.html",
+  "konfig": "exempel/konfig.js",
+  "data": "exempel/data.js",
+  "tema": "tema-neutral.css",
+  "typsnittCss": [],
+  "typsnittFiler": []
+}

@@ -1,0 +1,109 @@
+<!-- Roadmap · skalet.
+     Allt som är projektets kommer in genom platshållarna nedan; ingenting i
+     den här filen namnger ett projekt. bygg.ts fyller i dem.
+
+     Publiceringen lägger själv på doctype, html, head och body — därför
+     börjar filen på <title> och inte på <!doctype>. -->
+<title>{{TITEL}}</title>
+
+<style>
+{{TYPSNITT}}
+{{TEMA}}
+{{BAS}}
+</style>
+
+<header class="topp">
+  <div class="topp-inre">
+    <div class="marke">
+      {{MARKE}}
+      <div>
+        <h1>{{TITEL}}</h1>
+        <p class="under">{{UNDER}}</p>
+      </div>
+    </div>
+    <div class="vippa" role="group" aria-label="Mörkt eller ljust läge">
+      <button type="button" id="tema-mork" aria-pressed="true">Mörkt</button>
+      <button type="button" id="tema-ljus" aria-pressed="false">Ljust</button>
+    </div>
+  </div>
+</header>
+
+<div class="spalt">
+  <section class="oversikt" id="oversikt" aria-label="Faserna — klicka en ruta för att filtrera"></section>
+  <p class="filterrad" id="filterrad" hidden></p>
+
+  <div class="verktyg">
+    <div class="sokfalt" role="search">
+      <svg class="lupp" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+        <circle cx="11" cy="11" r="7" stroke="currentColor" stroke-width="2"></circle>
+        <path d="M20 20l-3.2-3.2" stroke="currentColor" stroke-width="2" stroke-linecap="round"></path>
+      </svg>
+      <input id="sok" type="search" autocomplete="off" spellcheck="false"
+             placeholder="Sök — rubrik, beskrivning, kategori, källa…"
+             aria-label="Sök i roadmapen" aria-describedby="traffar">
+      <span class="traffar" id="traffar" role="status" aria-live="polite" hidden></span>
+      <button class="rensa" id="rensa" type="button" aria-label="Rensa sökningen" title="Rensa sökningen (Esc)" hidden>×</button>
+    </div>
+    <div class="verktyg-hoger">
+      <span class="grupp-etikett">Gruppera</span>
+      <div class="segment" role="group" aria-label="Gruppera efter">
+        <button type="button" id="grupp-tid" aria-pressed="true">Tid</button>
+        <button type="button" id="grupp-omrade" aria-pressed="false">Område</button>
+      </div>
+      <div class="segment" role="tablist" aria-label="Visningsläge">
+        <button class="ikon" id="vy-kort" role="tab" aria-selected="true" aria-controls="panel-kort" aria-label="Kortvy" title="Kortvy">
+          <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+            <rect x="3" y="3" width="7.5" height="7.5" rx="2" fill="currentColor"></rect>
+            <rect x="13.5" y="3" width="7.5" height="7.5" rx="2" fill="currentColor"></rect>
+            <rect x="3" y="13.5" width="7.5" height="7.5" rx="2" fill="currentColor"></rect>
+            <rect x="13.5" y="13.5" width="7.5" height="7.5" rx="2" fill="currentColor"></rect>
+          </svg>
+        </button>
+        <button class="ikon" id="vy-tabell" role="tab" aria-selected="false" aria-controls="panel-tabell" aria-label="Tabellvy" title="Tabellvy">
+          <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+            <rect x="3" y="4.5" width="18" height="3.2" rx="1.4" fill="currentColor"></rect>
+            <rect x="3" y="10.4" width="18" height="3.2" rx="1.4" fill="currentColor"></rect>
+            <rect x="3" y="16.3" width="18" height="3.2" rx="1.4" fill="currentColor"></rect>
+          </svg>
+        </button>
+        <button class="ikon" id="vy-kanban" role="tab" aria-selected="false" aria-controls="panel-kanban" aria-label="Kanban" title="Kanban">
+          <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+            <rect x="3" y="4" width="4.6" height="16" rx="1.5" fill="currentColor"></rect>
+            <rect x="9.7" y="4" width="4.6" height="11" rx="1.5" fill="currentColor"></rect>
+            <rect x="16.4" y="4" width="4.6" height="14" rx="1.5" fill="currentColor"></rect>
+          </svg>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <div id="panel-kort" class="panel pa" role="tabpanel" aria-labelledby="vy-kort"></div>
+  <div id="panel-tabell" class="panel" role="tabpanel" aria-labelledby="vy-tabell" hidden></div>
+  <div id="panel-kanban" class="panel" role="tabpanel" aria-labelledby="vy-kanban" hidden></div>
+
+  <footer class="fot">
+{{SIDFOT}}
+    <!-- Bruksanvisningen hör till motorn, inte till projektet, och står därför
+         här och inte i konfigen. -->
+    <p style="margin:0">
+      <b>Gruppera</b> (Tid/Område) styr indelningen i alla tre vyerna — i Kanban blir det kolumndimensionen.
+      Klicka en fasruta för att filtrera. <b>Levererat är dolt som förval</b> och visas när du klickar rutan eller söker.
+      Tabellen sorteras genom att klicka en kolumnrubrik.
+    </p>
+{{KALLOR}}
+  </footer>
+</div>
+
+<script>
+// Insvept så att sidans variabler inte blir globala. Ingen 'use strict':
+// motorn kördes utan den innan uppdelningen, och det här bygget ska bete sig
+// likadant som den publicerade sidan.
+(() => {
+
+{{KONFIG}}
+
+{{DATA}}
+
+{{MOTOR}}
+})();
+</script>

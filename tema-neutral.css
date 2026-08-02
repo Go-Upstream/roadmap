@@ -1,0 +1,100 @@
+/* Roadmap · neutralt standardtema.
+ *
+ * Ett projekt utan egen grafisk profil kan använda den här filen rakt av.
+ * Har projektet en profil skriver man en egen temafil i stället — den måste
+ * sätta alla tokens nedan, annars faller något i bas.css tillbaka på
+ * ingenting. `npm run roadmap` kontrollerar det och stannar om något saknas.
+ *
+ * Färgerna är avsiktligt inte någon produkts: dova gråtoner med en dämpad
+ * blå accent, så att den som byter tema ser att det är utbytt och inte ärver
+ * en identitet av misstag.
+ *
+ * Mörkt är standardläget. Motorn stämplar data-theme på <html>; kommer sidan
+ * in med data-theme="light" respekteras det, och läsarens val i vippan
+ * vinner alltid och sparas.
+ */
+
+:root {
+  color-scheme: dark;
+
+  /* Ytor · fyra steg från botten till det upphöjda */
+  --paper: #101012;  --band: #17171a;  --panel: #1e1e22;
+  --line: #2b2b31;   --hair: rgba(255,255,255,.09);
+  --line-stark: #3a3a42;
+
+  /* Text · tre grader, aldrig fler */
+  --ink: #f4f4f6;    --ink-2: #b6b6bd; --ink-3: #85858e;
+
+  /* Accent · det tryckbara, och ingenting annat */
+  --accent: #6E9BE8; --accent-ned: #4F7FD0; --accent-botten: #16233a;
+  --accent-ord: #0d1220;
+
+  /* Signalfärger · håll dem skilda från accenten */
+  --good: #4CAF63;   --warn: #E0A32B;   --serious: #E08A5A; --crit: #DE6060;
+  --pa-signal: #0d1220;
+
+  /* Rum · bas 4, sju steg */
+  --rum-1: 4px;  --rum-2: 8px;  --rum-3: 12px; --rum-4: 16px;
+  --rum-5: 24px; --rum-6: 32px; --rum-7: 56px;
+
+  --radie-s: 12px; --radie-m: 16px; --radie-l: 20px; --radie-pill: 999px;
+
+  --grad-etikett: 10px;   --grad-fin: 12.5px;
+  --grad-text: 14px;      --grad-kontroll: 15px;
+  --grad-rad: 16.5px;     --grad-kort: 21px;
+  --grad-avsnitt: 26px;   --grad-sida: 44px;
+
+  /* Systemtypsnitt · inget laddas, ingen licens följer med */
+  --sprak: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --fakta: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  --fakta-bredd: 100%;
+
+  --tid-snabb: 120ms; --tid-normal: 220ms; --tid-lugn: 400ms;
+  --kurva: cubic-bezier(.2, .7, .3, 1);
+
+  /* Faserna · konfigens faser pekar hit med color */
+  --fas-levererat: var(--good);
+  --fas-nartid:    var(--accent);
+  --fas-senare:    var(--warn);
+  --fas-fraga:     var(--serious);
+  --fas-uteslutet: var(--ink-3);
+
+  --spalt: 1120px;
+}
+
+/* Systemets läge, för den som öppnar filen utanför en artefakt */
+@media (prefers-color-scheme: light) {
+  :root {
+    color-scheme: light;
+    --paper: #fcfcfd;  --band: #f4f5f7;  --panel: #eceef1;
+    --line: #dcdee3;   --hair: rgba(10,10,15,.09);
+    --line-stark: #c6c8cf;
+    --ink: #131317;    --ink-2: #4e4e57; --ink-3: #767680;
+    --accent: #2C5FB8; --accent-ned: #1F4590; --accent-botten: #E4EBF8;
+    --accent-ord: #ffffff;
+    --good: #237A38;   --warn: #8A6209;   --serious: #B4562B; --crit: #C23B3B;
+  }
+}
+
+/* Läsarens eget val vinner över mediefrågan, åt båda hållen */
+:root[data-theme="light"] {
+  color-scheme: light;
+  --paper: #fcfcfd;  --band: #f4f5f7;  --panel: #eceef1;
+  --line: #dcdee3;   --hair: rgba(10,10,15,.09);
+  --line-stark: #c6c8cf;
+  --ink: #131317;    --ink-2: #4e4e57; --ink-3: #767680;
+  --accent: #2C5FB8; --accent-ned: #1F4590; --accent-botten: #E4EBF8;
+  --accent-ord: #ffffff;
+  --good: #237A38;   --warn: #8A6209;   --serious: #B4562B; --crit: #C23B3B;
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --paper: #101012;  --band: #17171a;  --panel: #1e1e22;
+  --line: #2b2b31;   --hair: rgba(255,255,255,.09);
+  --line-stark: #3a3a42;
+  --ink: #f4f4f6;    --ink-2: #b6b6bd; --ink-3: #85858e;
+  --accent: #6E9BE8; --accent-ned: #4F7FD0; --accent-botten: #16233a;
+  --accent-ord: #0d1220;
+  --good: #4CAF63;   --warn: #E0A32B;   --serious: #E08A5A; --crit: #DE6060;
+}
