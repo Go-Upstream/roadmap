@@ -5,7 +5,7 @@
  * grupperingen utan att bygget säger något. */
   const ITEMS = [
     { t: 'Den första posten',
-      d: 'En post under Närtid, med en prioritet. Beskrivningen får vara så lång som den behöver — tabellen och kortet klipper den, och Kanban visar den hel.',
+      d: 'En post under Närtid, med en prioritet. Beskrivningen bär **fetstil**, *kursiv* och `kod` — de tre former motorn renderar, och inga fler. En rubrik eller en lista hör hemma i filen posten kommer ur, och källfältet pekar dit.',
       fas: 'nartid', omr: 'Produkt', prio: 'hög', k: 'docs/exempel.md' },
     { t: 'En obesvarad fråga',
       d: 'En öppen fråga ser annorlunda ut än en uppgift, och startar en annan prompt: den ber om ett förslag på hur frågan stängs, inte om kod.',

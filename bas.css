@@ -217,6 +217,19 @@ mark { background: var(--accent-botten); color: var(--ink); border-radius: 3px; 
   letter-spacing: -.014em; text-wrap: pretty;
 }
 .kort .brod { margin: 0; font-size: var(--grad-fin); line-height: 1.6; color: var(--ink-2); text-wrap: pretty; }
+
+/* Markdown i beskrivningen — fet, kursiv och kod, och bara de tre. Motorns
+   md() skriver taggarna. Fetstilen lyfts till --ink: brödtexten är satt i den
+   dämpade --ink-2, och det som märkts ut ska vinna över den, annars är
+   utmärkningen synlig bara i vikten. */
+.kort .brod b { color: var(--ink); font-weight: 600; }
+.kort .brod i { font-style: italic; }
+.kort .brod code {
+  font-family: var(--fakta); font-size: .92em; font-weight: 500;
+  color: var(--ink); background: var(--band);
+  border: 1px solid var(--hair); border-radius: 5px;
+  padding: .05em .35em;
+}
 .kort .fot { display: flex; align-items: center; gap: var(--rum-2); flex-wrap: wrap; margin-top: auto; padding-top: var(--rum-1); }
 
 .bricka {

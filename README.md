@@ -85,6 +85,12 @@ och går att kopiera rakt av.
    `k` (källa — vilket dokument posten kommer ur). `fas` och `omr` måste finnas
    i konfigens listor.
 
+   **Beskrivningen tål `**fet**`, `*kursiv*` och `` `kod` ``** — de tre, och
+   inga fler. Texten escapas först och taggarna skrivs efteråt, så en post kan
+   aldrig smuggla in HTML. Rubriker, listor och länkar hör hemma i filen posten
+   kommer ur; `k` pekar dit. I tabellens och Kanbans tooltip tas markörerna
+   bort i stället, eftersom ett `title`-attribut visar text och inte HTML.
+
    Det snabbaste sättet att få den första versionen är att låta en session
    läsa projektets egna dokument och skriva filen. Räkna med att rätta den
    efteråt — en avläsning missar det som bara står i förbigående.

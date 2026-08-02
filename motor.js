@@ -32,6 +32,42 @@
     return ut + e.slice(pos);
   }
 
+  /**
+   * Fetstil, kursiv och kod i en beskrivning.
+   *
+   * **Körs på en redan escapad sträng**, aldrig på rå text — det är hela
+   * skyddet. `esc` har då gjort om varje `<` till `&lt;`, så den enda HTML som
+   * kan finnas i resultatet är de taggar som skrivs här. Vänd på ordningen och
+   * en beskrivning blir en väg in för godtycklig HTML.
+   *
+   * Strängen kan innehålla `<mark>` från `hl`, och det gör ingen skada:
+   * uttrycken matchar inte över en asterisk, och taggarna har inga.
+   *
+   * Tre former, medvetet inte fler. En roadmap-post är en mening om vad som
+   * ska byggas, inte ett dokument — rubriker, listor och länkar hör hemma i
+   * filen posten kommer ur, och `k` pekar dit.
+   */
+  function md(escapat) {
+    return escapat
+      .replace(/`([^`]+)`/g, '<code>$1</code>')
+      .replace(/\*\*([^*]+)\*\*/g, '<b>$1</b>')
+      .replace(/(^|[\s(«"'—–])\*([^*\n]+)\*(?=$|[\s)»"'.,;:!?—–])/g, '$1<i>$2</i>');
+  }
+
+  /**
+   * Samma tre former, men markörerna bara borttagna.
+   *
+   * För ett `title`-attribut, som visar text och inte HTML. Utan det här står
+   * asteriskerna kvar i tooltipen medan de renderas i kortet — två olika svar
+   * på samma fråga. Anroparen escapar resultatet.
+   */
+  function utanMd(text) {
+    return String(text)
+      .replace(/`([^`]+)`/g, '$1')
+      .replace(/\*\*([^*]+)\*\*/g, '$1')
+      .replace(/(^|[\s(«"'—–])\*([^*\n]+)\*(?=$|[\s)»"'.,;:!?—–])/g, '$1$2');
+  }
+
   // ── Djuplänkar · öppnar en session med posten förifylld ──────────
   // Prompten skickas inte automatiskt, och texten i den hör till projektet,
   // inte till motorn — den står i konfigens prompt-block.
@@ -83,7 +119,7 @@
     return `
       <article class="kort" style="--c:${f.color}">
         <h3>${hl(it.t)}</h3>
-        <p class="brod">${hl(it.d)}</p>
+        <p class="brod">${md(hl(it.d))}</p>
         <div class="fot">
           <span class="bricka"><span class="bprick"></span>${f.label}</span>
           ${prioHTML(it, false)}
@@ -211,7 +247,7 @@
   function radHTML(it) {
     const f = FAS[it.fas];
     return `
-      <tr style="--c:${f.color}" title="${esc(it.d)}">
+      <tr style="--c:${f.color}" title="${esc(utanMd(it.d))}">
         <td class="t-rubrik-cell"><a class="t-start" href="${esc(sessionURL(it))}" target="_blank" rel="noopener"
               title="Öppnar claude.ai/code med en förifylld prompt — du granskar den innan sessionen startar"
               >${hl(it.t)} <span class="pil" aria-hidden="true">→</span></a></td>
@@ -255,7 +291,7 @@
       ? `<span class="bricka" style="--c:${f.color}"><span class="bprick"></span>${f.label}</span>`
       : `<span class="kategori" style="margin:0">${hl(it.omr)}</span>`;
     return `
-      <article class="kkort" draggable="true" data-i="${ITEMS.indexOf(it)}" style="--c:${f.color}" title="${esc(it.d)}">
+      <article class="kkort" draggable="true" data-i="${ITEMS.indexOf(it)}" style="--c:${f.color}" title="${esc(utanMd(it.d))}">
         <div class="krubrik">${hl(it.t)}</div>
         <div class="kmeta">${prioHTML(it, false)}${meta}
           <a class="kstarta" href="${esc(sessionURL(it))}" draggable="false" target="_blank" rel="noopener"
