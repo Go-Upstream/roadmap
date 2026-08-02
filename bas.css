@@ -373,32 +373,35 @@ a.t-lank:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; 
 
 /* Rubriken bär starten · den enda kolumnen som syns utan att tabellen
    scrollas i sidled på en telefon (min-width 780 i en overflow-x-ram). */
-a.t-start {
+.t-start {
+  /* En knapp och inte en länk: rubriken öppnar posten, den navigerar inte. */
+  appearance: none; background: none; border: 0; padding: 0; cursor: pointer;
+  font-family: inherit; font-size: inherit; text-align: left;
   color: var(--ink); font-weight: 650; text-decoration: none;
   display: inline-flex; align-items: baseline; gap: 7px;
   transition: color var(--tid-snabb) var(--kurva);
 }
-a.t-start .pil {
+.t-start .pil {
   font-family: var(--fakta); font-size: var(--grad-etikett); color: var(--ink-3);
   opacity: 0; transform: translateX(-3px);
   transition: opacity var(--tid-snabb) var(--kurva), transform var(--tid-snabb) var(--kurva);
 }
-a.t-start:hover, a.t-start:focus-visible { color: var(--accent); }
-a.t-start:hover .pil, a.t-start:focus-visible .pil { opacity: 1; transform: none; color: var(--accent); }
-a.t-start:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; border-radius: 4px; }
-tr:hover a.t-start .pil { opacity: 1; transform: none; }
+.t-start:hover, .t-start:focus-visible { color: var(--accent); }
+.t-start:hover .pil, .t-start:focus-visible .pil { opacity: 1; transform: none; color: var(--accent); }
+.t-start:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; border-radius: 4px; }
+tr:hover .t-start .pil { opacity: 1; transform: none; }
 
 /* Åtgärdscellen skriver ut båda för den som sitter vid en skärm */
 .t-atg-bred { width: 132px; text-align: right; white-space: nowrap; }
-a.t-starta-ord {
+.t-starta-ord {
   font-family: var(--fakta); font-weight: 600; font-size: var(--grad-etikett);
   letter-spacing: .05em; text-transform: uppercase;
   color: var(--ink-3); text-decoration: none;
   transition: color var(--tid-snabb) var(--kurva);
 }
-a.t-starta-ord:hover, a.t-starta-ord:focus-visible { color: var(--accent); }
-a.t-starta-ord:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 4px; }
-a.t-starta-ord:hover .pil, a.t-starta-ord:focus-visible .pil { transform: translateX(3px); }
+.t-starta-ord:hover, .t-starta-ord:focus-visible { color: var(--accent); }
+.t-starta-ord:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 4px; }
+.t-starta-ord:hover .pil, .t-starta-ord:focus-visible .pil { transform: translateX(3px); }
 .t-atg-bred a + a { margin-left: var(--rum-3); }
 
 /* Kanban · starten tar platsen kategorin annars breder ut sig på */
@@ -510,4 +513,228 @@ footer.fot .kallrad {
   .ruta .tal { font-size: 24px; }
   .verktyg-hoger { margin-left: 0; flex-wrap: wrap; }
   .rutnat { grid-template-columns: 1fr; }
+}
+
+/* ── Posten, öppnad från sin rubrik ──────────────────────────────────
+   Förklaringen låg förut i webbläsarens `title`-tooltip: den bryter aldrig
+   rad, kommer efter en sekunds hovrande, försvinner när musen rör sig, och
+   på en telefon finns den inte alls — det går inte att hovra. Ingenting av
+   det går att styla, så den är utbytt och inte förbättrad. */
+.kort h3, .kkort .krubrik, .t-start { cursor: pointer; }
+.kort h3:hover, .kkort .krubrik:hover, .t-start:hover { text-decoration: underline; text-underline-offset: 3px; }
+.kort h3:focus-visible, .kkort .krubrik:focus-visible {
+  outline: 2px solid var(--accent); outline-offset: 3px; border-radius: 4px;
+}
+
+/* Bakgrunden låses medan panelen är öppen. Utan det scrollar sidan bakom
+   bladet på en telefon, och sidhuvudet — som är sticky — glider upp över
+   bladets överkant och tar emot tryckningar som var menade för brickorna. */
+:root[data-panel] { overflow: hidden; }
+:root[data-panel] header.topp { z-index: 0; }
+
+.slöja {
+  position: fixed; inset: 0; z-index: 60;
+  background: color-mix(in srgb, #000 62%, transparent);
+  backdrop-filter: blur(3px);
+  display: flex; align-items: center; justify-content: center;
+  padding: var(--rum-5);
+  /* `visibility` och inte bara `opacity`: en genomskinlig panel är fortfarande
+     fokuserbar, och panelens knappar skulle annars ligga kvar i tabbordningen
+     bakom sidan. Fördröjningen låter uttoningen gå klart innan den göms. */
+  opacity: 0; visibility: hidden; pointer-events: none;
+  transition: opacity var(--tid-normal) var(--kurva), visibility 0s linear var(--tid-normal);
+}
+.slöja[data-öppen] {
+  opacity: 1; visibility: visible; pointer-events: auto;
+  transition: opacity var(--tid-normal) var(--kurva), visibility 0s;
+}
+.postpanel {
+  position: relative;
+  width: 100%; max-width: 640px; max-height: min(86vh, 800px);
+  display: flex; flex-direction: column;
+  background: var(--band); color: var(--ink);
+  border: 1px solid var(--line-stark); border-radius: var(--radie-l);
+  box-shadow: 0 24px 64px rgba(0,0,0,.5);
+  transform: translateY(10px) scale(.99);
+  transition: transform var(--tid-normal) var(--kurva);
+  overflow: hidden;
+}
+.slöja[data-öppen] .postpanel { transform: none; }
+.postpanel::before { content: ''; position: absolute; inset: 0 0 auto; height: 3px; background: var(--c); }
+.pp-huvud { display: flex; align-items: flex-start; gap: var(--rum-3); padding: var(--rum-5) var(--rum-5) var(--rum-3); }
+.pp-brickor { display: flex; gap: var(--rum-2); flex-wrap: wrap; margin-right: auto; }
+.pp-stang {
+  appearance: none; border: 1px solid var(--line); background: var(--panel); color: var(--ink-3);
+  width: 30px; height: 30px; border-radius: 50%; cursor: pointer; flex-shrink: 0;
+  font-size: 15px; line-height: 1; display: grid; place-items: center;
+}
+.pp-stang:hover { color: var(--ink); border-color: var(--line-stark); }
+.pp-stang:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.pp-kropp { overflow-y: auto; padding: 0 var(--rum-5) var(--rum-5); }
+.pp-kropp h2 {
+  margin: 0 0 var(--rum-4); font-size: var(--grad-kort); font-weight: 700;
+  letter-spacing: -.024em; line-height: 1.25; text-wrap: balance;
+}
+.pp-brod { margin: 0; font-size: var(--grad-text); line-height: 1.7; color: var(--ink-2); text-wrap: pretty; }
+.pp-brod b { color: var(--ink); font-weight: 600; }
+.pp-brod i { font-style: italic; }
+.pp-brod code {
+  font-family: var(--fakta); font-size: .88em; background: var(--panel);
+  border: 1px solid var(--hair); border-radius: 5px; padding: 1px 5px;
+}
+.pp-flagga {
+  display: flex; gap: var(--rum-3); align-items: flex-start;
+  margin: 0 0 var(--rum-4); padding: var(--rum-3) var(--rum-4);
+  border: 1px solid color-mix(in srgb, var(--serious) 40%, transparent);
+  background: color-mix(in srgb, var(--serious) 11%, transparent);
+  border-radius: var(--radie-s);
+  font-size: var(--grad-fin); line-height: 1.6; color: var(--ink-2);
+}
+.pp-flagga .tecken { color: var(--serious); font-size: 15px; line-height: 1.35; flex-shrink: 0; }
+.pp-flagga b { color: var(--ink); font-weight: 600; }
+/* Vad hinken betyder. Texten står i konfigen och syntes förut bara som ännu
+   en tooltip, på översiktens rutor. */
+.pp-hink {
+  margin: var(--rum-5) 0 0; padding: var(--rum-4);
+  background: var(--panel); border: 1px solid var(--hair); border-radius: var(--radie-s);
+}
+.pp-hink .etikett {
+  display: block; font-family: var(--fakta); font-weight: 600;
+  font-size: var(--grad-etikett); letter-spacing: .07em; text-transform: uppercase;
+  color: var(--c); margin-bottom: var(--rum-2);
+}
+.pp-hink p { margin: 0; font-size: var(--grad-fin); line-height: 1.65; color: var(--ink-2); }
+.pp-fakta { margin: var(--rum-5) 0 0; display: grid; grid-template-columns: auto 1fr; gap: var(--rum-3) var(--rum-4); }
+.pp-fakta dt {
+  font-family: var(--fakta); font-weight: 500; font-size: var(--grad-etikett);
+  letter-spacing: .06em; text-transform: uppercase; color: var(--ink-3);
+  padding-top: 3px; white-space: nowrap;
+}
+.pp-fakta dd { margin: 0; font-size: var(--grad-fin); color: var(--ink-2); line-height: 1.6; }
+.pp-fakta dd .stark { color: var(--ink); }
+.pp-fakta dd.kalla { font-family: var(--fakta); font-size: var(--grad-etikett); letter-spacing: .03em; }
+.pp-fakta .inom { color: var(--ink-3); }
+.pp-fot {
+  display: flex; gap: var(--rum-3); align-items: center; flex-wrap: wrap;
+  padding: var(--rum-4) var(--rum-5); border-top: 1px solid var(--line); background: var(--panel);
+}
+.knapp-primar {
+  display: inline-flex; align-items: center; gap: var(--rum-2);
+  background: var(--accent); color: var(--accent-ord); text-decoration: none;
+  font-family: var(--fakta); font-weight: 600; font-size: var(--grad-etikett);
+  letter-spacing: .06em; text-transform: uppercase;
+  padding: 11px 18px; border-radius: var(--radie-pill); border: 0; cursor: pointer;
+}
+.knapp-primar:hover { background: var(--accent-ned); }
+.knapp-primar:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+.pp-lapp { margin: 0 0 0 auto; text-align: right; }
+
+/* ── Etiketterna går att ändra ───────────────────────────────────────
+   Sidan sparar ingenting — den byggs om ur repot, så ett sparat värde hade
+   skrivits över tyst vid nästa bygge. Ett val skriver därför om prompten,
+   aldrig posten. Samma mekanik som en flytt i Kanban. */
+button.bricka, button.obesvarad, button.faltknapp {
+  appearance: none; cursor: pointer; font: inherit; font-family: var(--fakta);
+  font-size: var(--grad-etikett); letter-spacing: .04em;
+}
+button.bricka { font-weight: 600; text-transform: uppercase; }
+button.bricka:hover, button.obesvarad:hover { filter: brightness(1.22); }
+button.bricka:focus-visible, button.obesvarad:focus-visible, button.faltknapp:focus-visible {
+  outline: 2px solid var(--accent); outline-offset: 2px;
+}
+.karet { opacity: .55; font-size: 9px; margin-left: 1px; }
+button.obesvarad.tom { color: var(--ink-3); border-color: var(--line-stark); border-style: dashed; background: transparent; }
+button.obesvarad.tom:hover { color: var(--serious); border-color: var(--serious); filter: none; }
+button.faltknapp {
+  background: transparent; border: 1px dashed transparent; border-radius: var(--radie-s);
+  color: inherit; padding: 2px 7px; margin: -2px 0 -2px -7px;
+  display: inline-flex; align-items: center; text-align: left; text-transform: none;
+  letter-spacing: 0; font-family: var(--sprak); font-size: var(--grad-fin);
+}
+button.faltknapp:hover { border-color: var(--line-stark); background: var(--panel); }
+/* Valt men inte skickat */
+[data-andrad] { outline: 1px dashed var(--accent); outline-offset: 2px; }
+
+.valjare {
+  position: fixed; z-index: 70; min-width: 232px; max-width: min(340px, calc(100vw - 24px));
+  max-height: min(60vh, 420px); overflow-y: auto;
+  background: var(--panel); border: 1px solid var(--line-stark);
+  border-radius: var(--radie-m); box-shadow: 0 16px 40px rgba(0,0,0,.5);
+  padding: var(--rum-2); display: none;
+}
+.valjare[data-öppen] { display: block; }
+.valjare .rubrik {
+  display: block; font-family: var(--fakta); font-size: var(--grad-etikett);
+  letter-spacing: .07em; text-transform: uppercase; color: var(--ink-3);
+  padding: var(--rum-2) var(--rum-3);
+}
+.valjare button {
+  appearance: none; display: flex; align-items: center; gap: var(--rum-3);
+  width: 100%; text-align: left; cursor: pointer;
+  background: transparent; border: 0; border-radius: var(--radie-s);
+  padding: 9px var(--rum-3); color: var(--ink-2);
+  font-family: var(--sprak); font-size: var(--grad-fin); line-height: 1.4;
+}
+.valjare button:hover { background: var(--band); color: var(--ink); }
+.valjare button:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+.valjare button[aria-checked="true"] { color: var(--ink); }
+.valjare .markor { width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; border: 1.5px solid var(--c, var(--ink-3)); }
+.valjare button[aria-checked="true"] .markor {
+  background: var(--c, var(--ink));
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--c, var(--ink)) 25%, transparent);
+}
+.valjare .nu {
+  margin-left: auto; padding-left: var(--rum-2); font-family: var(--fakta); font-size: 9px;
+  letter-spacing: .07em; text-transform: uppercase; color: var(--ink-3);
+}
+
+.pp-andringar {
+  display: none; align-items: flex-start; gap: var(--rum-3);
+  padding: var(--rum-3) var(--rum-5);
+  border-top: 1px dashed var(--accent);
+  background: color-mix(in srgb, var(--accent) 9%, transparent);
+  font-size: var(--grad-fin); line-height: 1.55; color: var(--ink-2);
+}
+.pp-andringar[data-öppen] { display: flex; }
+.pp-andringar b { color: var(--ink); font-weight: 600; }
+.pp-andringar code { font-family: var(--fakta); font-size: .9em; }
+.pp-andringar .angra {
+  margin-left: auto; flex-shrink: 0; appearance: none; background: none; border: 0;
+  cursor: pointer; color: var(--ink-3); font-family: var(--fakta);
+  font-size: var(--grad-etikett); letter-spacing: .05em; text-transform: uppercase;
+  text-decoration: underline; text-underline-offset: 3px;
+}
+.pp-andringar .angra:hover { color: var(--ink); }
+.pp-prompt {
+  margin: var(--rum-4) 0 0; padding: var(--rum-3) var(--rum-4);
+  background: var(--paper); border: 1px solid var(--line); border-radius: var(--radie-s);
+  font-family: var(--fakta); font-size: 11px; line-height: 1.75; color: var(--ink-3);
+  white-space: pre-wrap; max-height: 190px; overflow-y: auto;
+}
+.visa-prompt {
+  appearance: none; background: none; border: 0; cursor: pointer; padding: 0;
+  color: var(--ink-3); font-family: var(--fakta); font-size: var(--grad-etikett);
+  letter-spacing: .05em; text-transform: uppercase;
+  text-decoration: underline; text-underline-offset: 3px;
+}
+.visa-prompt:hover { color: var(--ink); }
+
+.pp-handtag { display: none; }
+/* Telefonen: panelen blir ett blad som fäster i underkanten. Där finns ingen
+   hovring alls, vilket är hela skälet till att tooltipen inte dög. */
+@media (max-width: 560px) {
+  .slöja { align-items: flex-end; padding: 0; }
+  .postpanel {
+    max-width: none; max-height: 92vh;
+    border-radius: var(--radie-l) var(--radie-l) 0 0;
+    border-bottom: 0; transform: translateY(24px);
+  }
+  .pp-huvud, .pp-kropp, .pp-fot, .pp-andringar { padding-left: var(--rum-4); padding-right: var(--rum-4); }
+  .pp-fot { padding-bottom: max(var(--rum-4), env(safe-area-inset-bottom)); }
+  .pp-lapp { margin-left: 0; width: 100%; text-align: left; }
+  .pp-fakta { grid-template-columns: 1fr; gap: var(--rum-1) 0; }
+  .pp-fakta dt { padding-top: var(--rum-3); }
+  .pp-andringar { flex-wrap: wrap; }
+  .valjare { left: var(--rum-3) !important; right: var(--rum-3); width: auto; max-width: none; }
+  .pp-handtag { display: block; width: 36px; height: 4px; border-radius: 2px; background: var(--line-stark); margin: var(--rum-3) auto 0; }
 }
