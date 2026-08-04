@@ -1,0 +1,25 @@
+{
+  "permissions": {
+    "allow": [
+      "mcp__github",
+      "mcp__Claude_Code_Remote",
+      "mcp__claude-code-remote",
+      "Artifact",
+      "Read",
+      "Edit",
+      "Write",
+      "Bash(git *)",
+      "Bash(npm *)",
+      "Bash(npx *)"
+    ],
+    "ask": [
+      "mcp__github__delete_file",
+      "mcp__github__create_repository",
+      "mcp__github__fork_repository",
+      "Bash(git push --force *)",
+      "Bash(git push -f *)",
+      "Bash(git reset --hard *)",
+      "Bash(git clean *)"
+    ]
+  }
+}
