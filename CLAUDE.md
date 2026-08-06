@@ -15,6 +15,11 @@ när projektet flyttar fram sin pinnade commit.
   aldrig tvillingen på `claude-code-remote`-servern, som gör samma sak men
   kostar en godkännandedialog — och driv den till grönt. Rapportera bara det
   som ändrat sig.
+- **`send_later` aldrig på eget initiativ** — varje anrop är en
+  godkännandedialog, och den kommer när ingen sitter vid datorn. Det som inte
+  syns via PR-prenumerationen eller skalet rapporteras som overifierat; en
+  påminnelse schemaläggs bara när ägaren uttryckligen bett om en. (Gemensamt
+  Go-Upstream-beslut 4 aug 2026, underlaget i ABkolls `docs/beslut.md`.)
 - **Auto-merge får användas brett här.** En merge till `main` driftsätter
   ingenting: konsumenterna är pinnade och påverkas först när pinnen flyttas.
   Slå på auto-merge när PR:en är grön — utom när ändringen bryter motorns
