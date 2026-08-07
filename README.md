@@ -46,15 +46,17 @@ och går att kopiera rakt av.
 1. **Installera motorn.**
 
    ```bash
-   npm i -D @go-upstream/roadmap@github:Go-Upstream/roadmap#v1.0.0
+   npm i -D @go-upstream/roadmap@github:Go-Upstream/roadmap#<commit>
    ```
 
-   Pinna på en tagg och inte på en gren. Ett projekt ska kunna ligga kvar på en
-   äldre motor tills det självt vill flytta — annars är en förbättring här en
-   ändring i varje projekt samtidigt, vilket är precis vad ett delat verktyg
-   ska slippa.
+   Pinna på en **commit** — inte på en tagg och inte på en gren. Det finns
+   inga taggar; pinnen är hashen, och den flyttas inte för hand. Se
+   **Pinnflytten** nedan.
 
    `tsx` behövs också, om projektet inte redan har det: `npm i -D tsx`.
+
+   Lägg sedan till projektet i `konsumenter.json` här, annars når ingen
+   pinnflytt det.
 
 2. **Skapa katalogen.** `roadmap/` i projektets rot fungerar; namnet är fritt
    så länge `bygge.json` pekar rätt. Kopiera `exempel/konfig.js` och
@@ -219,9 +221,42 @@ Provet bygger exempelinstansen och kontrollerar att skalet är ifyllt, att
 konfigen och datan nådde fram, att temat kom med, och att sidan inte hämtar
 något från en annan värd. Det körs också av GitHub Actions på varje push.
 
-En ändring når inget projekt förrän den fått en tagg och projektet flyttat sin
-pinning dit. Tagga med `vMAJOR.MINOR.PATCH`, och höj major när ett projekts
-`konfig.js`, `data.js` eller `bygge.json` måste ändras för att fortsätta bygga.
+Bumpa `version` i `package.json` vid beteendeändringar — höj major när ett
+projekts `konfig.js`, `data.js` eller `bygge.json` måste ändras för att
+fortsätta bygga. Numret är lässtöd och står i pinnflyttens PR-titel; det finns
+inga npm-publiceringar och inga git-taggar.
+
+## Pinnflytten
+
+**Målet är att alla projekt kör senaste motorn.** Motorn byggs en gång, och
+den ska nå alla — det första är skälet till att den bor här, det andra är vad
+som gör det värt något.
+
+Pinnen finns ändå kvar, för att den gör bygget reproducerbart: `package-lock.json`
+spikar den upplösta commiten, så `npm ci` ger samma sida i dag som i går. Det
+som är borta är kravet att någon ska komma ihåg att flytta den.
+
+Arbetsgången, som ingen behöver driva:
+
+1. En PR mergas till `main` här och kontrollen `prov` blir grön.
+2. Arbetsflödet **Pinnflytt** går igenom `konsumenter.json` och öppnar — eller
+   uppdaterar — en PR i varje projekt som skriver om hashen i `package.json`
+   och `package-lock.json`. Grenen heter `roadmap/pinnflytt` och återanvänds,
+   så två motorcommiter tätt inpå varandra ger en PR och inte två.
+3. Projektets egna kontroller kör. Är `automerge` sann i `konsumenter.json`
+   går PR:en in av sig själv när de är gröna.
+
+Ett projekt som inte hämtar `@go-upstream/roadmap` hoppas över med en rad i
+loggen, så en felaktig post i listan öppnar ingen PR.
+
+**Det sista steget är fortfarande manuellt, och det är avsiktligt.** Sidan är
+en artefakt som publiceras med Artifact-verktyget, vilket ett GitHub-jobb inte
+kan göra. Pinnflyttens PR bär därför både byggkommandot och artefaktens url,
+och den url:en måste återanvändas — publicerar man utan `url` skapas en ny
+artefakt och den länk som redan delats slutar uppdateras.
+
+Vill man se en flytt hända utan att vänta på en merge: kör **Pinnflytt** via
+*Actions → Run workflow*.
 
 ## Att veta
 

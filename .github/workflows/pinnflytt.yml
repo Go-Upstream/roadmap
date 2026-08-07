@@ -1,0 +1,197 @@
+name: Pinnflytt
+
+# Målet är att alla projekt kör senaste motorn. Pinnen finns kvar — den ger
+# reproducerbara bygg — men den flyttas inte längre av någon som råkar komma
+# ihåg det. Varje grön merge till main öppnar en pinnflytt-PR i varje
+# konsument i konsumenter.json.
+#
+# Kör efter `Prov` och inte parallellt med det: en pinne som flyttas till en
+# commit vars kontroller föll är precis det pinnen fanns för att förhindra.
+#
+# Repot är publikt och konsumenterna privata. Därför inget `pull_request`-
+# utlösare här: en gren från en fork skulle annars kunna nå PINNFLYTT_TOKEN.
+# workflow_run kör alltid med basrepots hemligheter, och bara `main` släpps
+# igenom nedan.
+
+on:
+  workflow_run:
+    workflows: [Prov]
+    types: [completed]
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pinnflytt
+  cancel-in-progress: false
+
+jobs:
+  lista:
+    if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-latest
+    outputs:
+      konsumenter: ${{ steps.las.outputs.konsumenter }}
+      commit: ${{ steps.las.outputs.commit }}
+      kort: ${{ steps.las.outputs.kort }}
+      version: ${{ steps.las.outputs.version }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # Den commit som faktiskt provades — inte «senaste på main», som
+          # hinner bli en annan om två merger ligger tätt.
+          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
+      - id: las
+        run: |
+          set -euo pipefail
+          sha="${{ github.event.workflow_run.head_sha || github.sha }}"
+          {
+            echo "konsumenter=$(jq -c '.konsumenter' konsumenter.json)"
+            echo "commit=$sha"
+            echo "kort=${sha:0:7}"
+            echo "version=$(jq -r .version package.json)"
+          } >> "$GITHUB_OUTPUT"
+
+  flytta:
+    needs: lista
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        k: ${{ fromJSON(needs.lista.outputs.konsumenter) }}
+    steps:
+      - name: Kontrollera att nyckeln finns
+        env:
+          TOKEN: ${{ secrets.PINNFLYTT_TOKEN }}
+        run: |
+          if [ -z "${TOKEN}" ]; then
+            echo "::error::PINNFLYTT_TOKEN saknas. Se CLAUDE.md, «Skydd och nycklar på main»." >&2
+            exit 1
+          fi
+
+      - name: Hämta konsumenten
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ matrix.k.repo }}
+          token: ${{ secrets.PINNFLYTT_TOKEN }}
+          path: konsument
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Flytta pinnen
+        id: pin
+        working-directory: konsument
+        # Värdena går genom env och aldrig in i skriptets text. Ett uttryck
+        # som expanderas rakt in i bash är ett skript som bara går att prova
+        # genom att köra det skarpt.
+        env:
+          COMMIT: ${{ needs.lista.outputs.commit }}
+          REPO: ${{ matrix.k.repo }}
+        run: |
+          set -euo pipefail
+          nu=$(jq -r '(.devDependencies["@go-upstream/roadmap"] // .dependencies["@go-upstream/roadmap"]) // ""' package.json)
+          if [ -z "$nu" ]; then
+            echo "::notice::$REPO hämtar inte @go-upstream/roadmap — hoppas över."
+            echo "gor=nej" >> "$GITHUB_OUTPUT"; exit 0
+          fi
+          if [ "${nu##*\#}" = "$COMMIT" ]; then
+            echo "::notice::$REPO ligger redan på $COMMIT."
+            echo "gor=nej" >> "$GITHUB_OUTPUT"; exit 0
+          fi
+          ny="github:Go-Upstream/roadmap#$COMMIT"
+          falt=devDependencies
+          jq -e '.devDependencies["@go-upstream/roadmap"]' package.json >/dev/null 2>&1 || falt=dependencies
+          jq --arg f "$falt" --arg v "$ny" '.[$f]["@go-upstream/roadmap"] = $v' package.json > .p.json
+          mv .p.json package.json
+          # Låsfilen spikar den upplösta commiten. Utan den här raden bygger
+          # `npm ci` vidare med den gamla motorn trots att package.json bytts.
+          npm install --package-lock-only --ignore-scripts --no-audit --no-fund
+          {
+            echo "gor=ja"
+            echo "fran=$nu"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Öppna eller uppdatera PR:en
+        if: steps.pin.outputs.gor == 'ja'
+        working-directory: konsument
+        env:
+          GH_TOKEN: ${{ secrets.PINNFLYTT_TOKEN }}
+          COMMIT: ${{ needs.lista.outputs.commit }}
+          KORT: ${{ needs.lista.outputs.kort }}
+          VERSION: ${{ needs.lista.outputs.version }}
+          FRAN: ${{ steps.pin.outputs.fran }}
+          REPO: ${{ matrix.k.repo }}
+          ARTEFAKT: ${{ matrix.k.artefakt }}
+          BYGG: ${{ matrix.k.bygg }}
+          AUTOMERGE: ${{ matrix.k.automerge }}
+        run: |
+          set -euo pipefail
+          gren=roadmap/pinnflytt
+          bas=$(gh repo view "$REPO" --json defaultBranchRef -q .defaultBranchRef.name)
+
+          git config user.name  "roadmap-pinnflytt"
+          git config user.email "noreply@github.com"
+          git switch -c "$gren"
+          git add package.json package-lock.json
+          git commit -m "Flytta roadmap-motorn till $KORT (v$VERSION)
+
+          Öppnad av Pinnflytt i Go-Upstream/roadmap. Målet är att alla projekt
+          kör senaste motorn; den här PR:en är hur den når hit.
+
+          Från: $FRAN
+          Till: github:Go-Upstream/roadmap#$COMMIT"
+          # Grenen återanvänds, så en ny motorcommit skriver över en PR som
+          # ännu inte hunnit gå in i stället för att lägga en till bredvid.
+          git push --force origin "$gren"
+
+          # Citerad heredoc: ingenting expanderas här, så bakåtfästena i
+          # texten är text och inte kommandon. Värdena sätts in efteråt.
+          cat > /tmp/kropp.md <<'TEXT'
+          ## Vad
+
+          Flyttar pinnen för `@go-upstream/roadmap` till [`{KORT}`](https://github.com/Go-Upstream/roadmap/commit/{COMMIT}) (v{VERSION}).
+
+          - Från: `{FRAN}`
+          - Till: `github:Go-Upstream/roadmap#{COMMIT}`
+
+          Bara `package.json` och `package-lock.json` ändras. Låsfilen måste med — utan den bygger `npm ci` vidare med den gamla motorn trots att `package.json` bytts.
+
+          ## Varför
+
+          Motorn är delad mellan projekten och byggs en gång. Att alla kör den senaste är målet, inte en tillfällighet — därför öppnas den här PR:en av sig själv vid varje grön merge i motorrepot, i stället för att vänta på att någon kommer ihåg den.
+
+          ## Efter merge
+
+          **Sidan byggs inte om av den här PR:en.** Den publiceras för hand, så det sista steget är ditt:
+
+          1. `{BYGG}`
+          2. Publicera med Artifact-verktyget **med `url={ARTEFAKT}`** — utan `url` skapas en ny artefakt, och den länk som redan delats slutar uppdateras.
+
+          Motorns egna kontroller (`prov`) var gröna på {KORT} innan den här PR:en öppnades. Vad som ändrats står i motorns [README](https://github.com/Go-Upstream/roadmap/blob/main/README.md).
+
+          ---
+          _Generated by [Claude Code](https://claude.ai/code)_
+          TEXT
+
+          # `|` som avgränsare: hasharna och url:erna innehåller `/`, aldrig `|`.
+          for p in KORT COMMIT VERSION FRAN BYGG ARTEFAKT; do
+            sed -i "s|{$p}|${!p}|g" /tmp/kropp.md
+          done
+
+          titel="Flytta roadmap-motorn till $KORT (v$VERSION)"
+          if gh pr view "$gren" --repo "$REPO" >/dev/null 2>&1; then
+            gh pr edit "$gren" --repo "$REPO" --title "$titel" --body-file /tmp/kropp.md
+          else
+            gh pr create --repo "$REPO" --base "$bas" --head "$gren" \
+              --title "$titel" --body-file /tmp/kropp.md
+          fi
+
+          if [ "$AUTOMERGE" = "true" ]; then
+            # Faller repot saknar auto-merge påslaget: PR:en står kvar öppen,
+            # vilket är rätt utfall och inte ett fel i den här körningen.
+            gh pr merge "$gren" --repo "$REPO" --squash --auto \
+              || echo "::warning::Auto-merge gick inte att slå på för $REPO — PR:en står öppen."
+          fi

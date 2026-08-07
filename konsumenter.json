@@ -1,0 +1,41 @@
+{
+  "_": [
+    "Projekten som hämtar motorn, och som pinnflytten ska nå.",
+    "",
+    "Listan finns för att målet är att alla kör senaste motorn. Ett projekt",
+    "som inte står här flyttas aldrig fram av sig självt — det är den enda",
+    "sanningen om vilka som ingår, och den ska stämma.",
+    "",
+    "  repo      · ägare/repo på GitHub, exakt som det stavas där.",
+    "  artefakt  · den publicerade sidan. Står i pinnflyttens PR, så att den",
+    "              som bygger om vet vilken url som ska återanvändas i stället",
+    "              för att skapa en ny artefakt och tappa den delade länken.",
+    "  bygg      · kommandot som bygger om roadmapen i det projektet.",
+    "  automerge · false låter PR:en stå öppen för granskning i stället för",
+    "              att gå in av sig själv när projektets egna kontroller är",
+    "              gröna.",
+    "",
+    "Ett repo som saknar @go-upstream/roadmap i sin package.json hoppas över",
+    "med en rad i loggen — en felaktig post här öppnar alltså ingen PR."
+  ],
+  "konsumenter": [
+    {
+      "repo": "Go-Upstream/ABkoll",
+      "artefakt": "https://claude.ai/code/artifact/8adcf3b8-8d5d-4dd2-b19c-1a5a7092f4ce",
+      "bygg": "npm run roadmap",
+      "automerge": true
+    },
+    {
+      "repo": "Go-Upstream/drilla",
+      "artefakt": "https://claude.ai/code/artifact/5e709086-8db2-481c-9895-e3a7ff9d3094",
+      "bygg": "npm run roadmap",
+      "automerge": true
+    },
+    {
+      "repo": "Go-Upstream/Helny",
+      "artefakt": "https://claude.ai/code/artifact/19d5ea28-5e86-405e-b189-18dd99760e4f",
+      "bygg": "npm run roadmap",
+      "automerge": true
+    }
+  ]
+}
