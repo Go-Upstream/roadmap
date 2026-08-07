@@ -16,6 +16,10 @@ dem lokalt.
 
 ## Efter merge
 
-<!-- Ändringen når ABkoll, Drilla och AntiqFlow först när de flyttar sin
-     pinnade commit. Behöver någon av dem flytta den direkt — eller kan det
-     vänta till nästa pinnflytt? Skriv "Kan vänta" om inget brådskar. -->
+<!-- Pinnflytten sker av sig själv: en grön merge här öppnar en PR i varje
+     projekt i konsumenter.json inom minuter. Frågan är alltså inte om det
+     brådskar, utan vad den som bygger om och publicerar behöver veta.
+
+     Behöver något projekt ändra sin konfig för att fortsätta bygga? Byter
+     sidan utseende eller beteende på ett sätt som förvånar en läsare? Står
+     det ingenting här läses det som "inget att tänka på". -->
