@@ -258,6 +258,31 @@ artefakt och den länk som redan delats slutar uppdateras.
 Vill man se en flytt hända utan att vänta på en merge: kör **Pinnflytt** via
 *Actions → Run workflow*.
 
+### «Skapa roadmap»
+
+Frasen som betyder «gör det sista, manuella steget för det här projektet»: en
+session som får **`Skapa roadmap <Projekt>`** — till exempel `Skapa roadmap
+Helny` — ska
+
+1. klona eller uppdatera projektets repo,
+2. `npm install`, så att den pinnade motorn (eller en ny pinne, om en
+   pinnflytts-PR redan mergats) hämtas,
+3. köra byggkommandot ur `konsumenter.json` — `npm run roadmap` för alla tre
+   idag,
+4. verifiera den byggda sidan (öppna den, pröva snabbvalet, pennan och
+   prompten — ett grönt bygge bevisar inte att sidan fungerar i webbläsaren),
+5. publicera med Artifact-verktyget och **`url=` projektets rad i
+   `konsumenter.json`** — aldrig utan, annars mister den delade länken sin
+   koppling.
+
+Projektnamnet är valfritt när sessionen redan bara har ett konsumentrepo
+öppet — bara **`Skapa roadmap`** räcker då. Med flera repo i sammanhanget
+pekar namnet ut vilket, och det ska matcha en `repo`-post i
+`konsumenter.json` (`ABkoll`, `drilla` eller `Helny` just nu).
+
+Är pinnen i `package.json` redan den senaste — inget att flytta, alltså
+inget att bygga om — säg det i stället för att publicera en oförändrad sida.
+
 ## Att veta
 
 - **Levererat är dolt som förval.** Det som är gjort ska inte konkurrera med
