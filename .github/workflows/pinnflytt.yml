@@ -97,11 +97,30 @@ jobs:
             echo "::notice::$REPO hämtar inte @go-upstream/roadmap — hoppas över."
             echo "gor=nej" >> "$GITHUB_OUTPUT"; exit 0
           fi
-          if [ "${nu##*\#}" = "$COMMIT" ]; then
+          # Två former är i bruk, och båda är giltiga npm-specar:
+          #
+          #   github:Go-Upstream/roadmap#<sha>
+          #   https://github.com/Go-Upstream/roadmap/archive/<sha>.tar.gz
+          #
+          # Formen är projektets val, och en pinnflytt ska flytta hashen —
+          # inte skriva om hur beroendet hämtas. Läste vi bara den ena skulle
+          # den andra dessutom aldrig kännas igen som «redan aktuell», och
+          # varje körning öppnade en PR som inte ändrade något i sak.
+          case "$nu" in
+            *'#'*)
+              harva="${nu##*#}"
+              ny="github:Go-Upstream/roadmap#$COMMIT" ;;
+            *'/archive/'*)
+              harva="${nu##*/archive/}"; harva="${harva%%.*}"
+              ny="https://github.com/Go-Upstream/roadmap/archive/$COMMIT.tar.gz" ;;
+            *)
+              echo "::error::Okänd form på pinnen i $REPO: $nu" >&2
+              exit 1 ;;
+          esac
+          if [ "$harva" = "$COMMIT" ]; then
             echo "::notice::$REPO ligger redan på $COMMIT."
             echo "gor=nej" >> "$GITHUB_OUTPUT"; exit 0
           fi
-          ny="github:Go-Upstream/roadmap#$COMMIT"
           falt=devDependencies
           jq -e '.devDependencies["@go-upstream/roadmap"]' package.json >/dev/null 2>&1 || falt=dependencies
           jq --arg f "$falt" --arg v "$ny" '.[$f]["@go-upstream/roadmap"] = $v' package.json > .p.json
