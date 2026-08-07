@@ -62,7 +62,7 @@ kontroll("temats fastoken finns", sida.includes("--fas-nartid"));
 // att någon skriver tillbaka `hl(it.d)` och tar bort renderingen, vilket är
 // den regression som annars syns som asterisker mitt i en mening.
 kontroll("kortet renderar beskrivningen genom md()", sida.includes("md(hl(it.d))"));
-kontroll("panelen renderar beskrivningen genom md()", sida.includes("md(esc(aktiv.d))"));
+kontroll("panelen renderar beskrivningen genom md()", sida.includes("md(esc(ppNu('d')))"));
 
 // Och funktionerna själva, körda ur motorns källa. Rena funktioner över en
 // sträng, så de går att prova utan DOM — och de är det enda stället där HTML
@@ -118,7 +118,7 @@ for (const [vy, monster] of [
 // de två gesterna skulle annars krocka på en telefon.
 kontroll("kanbankortet i övrigt öppnar inte panelen",
   !/<article class="kkort"[^>]*data-oppna/.test(sida));
-kontroll("ett pågående drag stänger dörren", sida.includes("if (!traff || dragPagar) return;"));
+kontroll("ett pågående drag stänger dörren", sida.includes("if (dragPagar) return;"));
 kontroll("dragflaggan kan inte fastna", sida.includes("dragPagar = false; }, true)"));
 // Fyra fält går att ändra, och ändringen skrivs i prompten — aldrig i posten.
 for (const falt of ["fas", "omr", "prio", "obesvarad"]) {
@@ -127,6 +127,48 @@ for (const falt of ["fas", "omr", "prio", "obesvarad"]) {
 kontroll("ändringen går genom konfigens uppdatera-prompt", sida.includes("K.prompt.uppdatera(aktiv, lista)"));
 kontroll("sidan sparar inte panelens val",
   !/localStorage\.setItem\([^)]*utkast/.test(sida));
+
+// Pennan · rubrik och beskrivning redigeras i panelen, från alla tre vyerna.
+// Formuläret låg förut i kortet, och bara där: pennan i tabellen och i Kanban
+// öppnade en session i stället för en redigering. En regression här ser inte
+// trasig ut — knappen finns kvar, den gör bara fel sak.
+kontroll("skalet bär textfälten", sida.includes('id="pp-red"') && sida.includes('id="pp-red-vipp"'));
+kontroll("det gamla kortformuläret är borta", !sida.includes('class="blankett"'));
+kontroll("pennan öppnar panelen och inte en länk",
+  sida.includes("data-andra=") && !sida.includes("andraURL"));
+kontroll("pennan öppnar panelen med textfälten framme",
+  sida.includes("{ redigera: true }"));
+kontroll("panelen läser textfälten in i utkastet", sida.includes("function ppLasRed"));
+kontroll("en tom ruta räknas inte som en ändring", sida.includes("if (!v || v === aktiv[falt]) delete utkast[falt]"));
+kontroll("Escape i ett textfält stänger inte panelen", sida.includes("e.target.closest?.('.pp-red')"));
+
+// Snabbvalet «Skippa» · ett klick i vilken vy som helst som lägger posten i
+// den hink projektet använder för det aktivt bortvalda. Det går genom panelen
+// och inte rakt ut i en session: sidan sparar ingenting, så ett felklick ska
+// gå att ta tillbaka innan det lämnar sidan.
+kontroll("motorn har ett snabbval", sida.includes("function skippaHTML"));
+kontroll("snabbvalet pekas ut av konfigen", sida.includes("K.skippa"));
+kontroll("förvalet är hinken uteslutet", sida.includes("{ fas: 'uteslutet', ord: 'Skippa' }"));
+kontroll("snabbvalet ritas inte på en post som redan ligger där",
+  sida.includes("!!FAS[SKIPPA.fas] && it.fas !== SKIPPA.fas"));
+kontroll("snabbvalet går genom panelen", sida.includes("{ utkast: { fas: SKIPPA.fas } }"));
+kontroll("snabbvalet ber om skälet", sida.includes("skriv in skälet"));
+kontroll("exemplet har döpt om hinken till Skippat", sida.includes("label: 'Skippat'"));
+
+// Prompten · posten läggs på i klartext sist. Utan det får en session en
+// rubrik och ingenting annat — beskrivningen, som är hela innehållet i en
+// roadmap-post, följde inte med, och sessionen börjar med att gissa.
+kontroll("motorn lägger på posten i klartext", sida.includes("function promptKontext"));
+kontroll("beskrivningen går med i prompten", sida.includes("`Beskrivning: ${it.d}`"));
+kontroll("blocket går att stänga av", sida.includes("K.promptKontext === false"));
+for (const [vad, monster] of [
+  ["starta session", "medKontext(K.prompt.session(it, FAS), it)"],
+  ["kanbanflytten", "medKontext(K.prompt.flytt(it, till, grupp, FAS), it)"],
+  ["panelens ändring", "medKontext(K.prompt.uppdatera(aktiv, lista), aktiv)"],
+  ["pennans session", "medKontext(K.prompt.andra(aktiv, FAS), aktiv)"],
+] as const) {
+  kontroll(`${vad} bär kontexten`, sida.includes(monster));
+}
 // Tooltiparna som panelen ersatte ska vara borta, annars visas två svar på
 // samma fråga — ett avhugget och ett helt.
 kontroll("radens och kanbankortets tooltip är borta", !sida.includes("utanMd"));

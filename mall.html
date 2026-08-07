@@ -90,6 +90,11 @@
       Klicka en fasruta för att filtrera. <b>Levererat är dolt som förval</b> och visas när du klickar rutan eller söker.
       Tabellen sorteras genom att klicka en kolumnrubrik.
     </p>
+    <p style="margin:0">
+      <b>Rubriken öppnar posten</b> — där står vad hinken och prio betyder, och där ändras postens sex fält.
+      <b>Pennan ✎</b> öppnar samma panel med rubrik och beskrivning redigerbara, och <b>⊘</b> lägger posten åt sidan.
+      Ingenting sparas i sidan: varje ändring blir en prompt som du granskar innan sessionen startar.
+    </p>
 {{KALLOR}}
   </footer>
 </div>
@@ -107,6 +112,21 @@
       <h2 id="pp-titel"></h2>
       <div id="pp-flagga"></div>
       <p class="pp-brod" id="pp-brod"></p>
+      <!-- Rubriken och beskrivningen redigeras här och inte i kortet: här
+           finns bladets hela bredd att skriva i, och samma yta nås från
+           pennan i alla tre vyerna. -->
+      <p class="pp-redrad"><button class="pp-red-vipp" type="button" id="pp-red-vipp"
+             aria-expanded="false" aria-controls="pp-red">Ändra rubrik och beskrivning ✎</button></p>
+      <form class="pp-red" id="pp-red" hidden>
+        <label>Rubrik
+          <input name="t" type="text" autocomplete="off">
+        </label>
+        <label>Beskrivning
+          <textarea name="d" rows="9"></textarea>
+        </label>
+        <p class="lapp">Beskrivningen tål <code>**fet**</code>, <code>*kursiv*</code> och <code>`kod`</code> — de tre, inga fler.
+          Ingenting sparas i sidan: texten går med i prompten, och sessionen skriver den i posternas fil.</p>
+      </form>
       <div class="pp-hink" id="pp-hink"></div>
       <dl class="pp-fakta" id="pp-fakta"></dl>
       <div id="pp-promptruta"></div>
