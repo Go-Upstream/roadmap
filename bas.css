@@ -295,49 +295,29 @@ table.roadmap td .bricka + .obesvarad { margin-left: var(--rum-2); }
   display: flex; align-items: center; gap: var(--rum-4);
   margin-top: var(--rum-1); padding-top: var(--rum-3); border-top: 1px solid var(--hair);
 }
-.starta, .andra, .verkstall, .avbryt {
+.starta, .andra, .skippa, .avbryt {
   display: inline-flex; align-items: center; gap: 6px;
   font-family: var(--fakta); font-weight: 600; font-size: var(--grad-etikett);
   letter-spacing: .05em; text-transform: uppercase;
   color: var(--ink-3); text-decoration: none;
   transition: color var(--tid-snabb) var(--kurva);
 }
-.andra, .avbryt { appearance: none; background: none; border: 0; padding: 0; cursor: pointer; }
-.andra, .avbryt { margin-left: auto; }
+.andra, .skippa, .avbryt { appearance: none; background: none; border: 0; padding: 0; cursor: pointer; }
+/* Starten står först och de två snabbvalen sist. Har posten redan skippats
+   ritas inte den knappen, och då är det pennan som får skjutas ut. */
+.skippa, .andra { margin-left: auto; }
+.skippa + .andra { margin-left: 0; }
 .starta:hover, .starta:focus-visible, .andra:hover, .andra:focus-visible { color: var(--accent); }
 .avbryt:hover, .avbryt:focus-visible { color: var(--ink); }
-.starta:focus-visible, .andra:focus-visible, .avbryt:focus-visible, .verkstall:focus-visible {
+.starta:focus-visible, .andra:focus-visible, .skippa:focus-visible, .avbryt:focus-visible {
   outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 4px;
 }
 .pil { transition: transform var(--tid-snabb) var(--kurva); }
-.starta:hover .pil, .verkstall:hover .pil { transform: translateX(3px); }
+.starta:hover .pil { transform: translateX(3px); }
 
-/* Ändra-formuläret */
-.blankett { margin-top: var(--rum-3); padding-top: var(--rum-3); border-top: 1px dashed var(--line-stark); }
-.blankett[hidden] { display: none; }
-.blankett label {
-  display: block; margin-bottom: var(--rum-3);
-  font-family: var(--fakta); font-weight: 600; font-size: var(--grad-etikett);
-  letter-spacing: .06em; text-transform: uppercase; color: var(--ink-2);
-}
-.blankett input, .blankett textarea {
-  display: block; width: 100%; margin-top: 6px;
-  background: var(--paper); color: var(--ink);
-  border: 1px solid var(--line-stark); border-radius: var(--radie-s);
-  padding: 9px 11px; font-family: var(--sprak); font-size: var(--grad-fin);
-  line-height: 1.5; resize: vertical;
-}
-.blankett input:focus-visible, .blankett textarea:focus-visible {
-  outline: 2px solid var(--accent); outline-offset: -1px;
-}
-.blankett .lapp {
-  margin: 0 0 var(--rum-3); font-family: var(--fakta); font-weight: 500;
-  font-size: var(--grad-etikett); letter-spacing: .02em; color: var(--ink-3);
-  text-transform: none; line-height: 1.7;
-}
-.blankett .rad { display: flex; align-items: center; gap: var(--rum-4); }
-.verkstall { color: var(--accent); text-decoration: none; }
-.verkstall.slack { color: var(--ink-3); pointer-events: none; }
+/* Snabbvalet «Skippa» · det enda som lägger en post åt sidan, så det ska
+   synas att det är ett annat slags handling än att starta eller ändra. */
+.skippa:hover, .skippa:focus-visible { color: var(--serious); }
 
 /* ── Tabell ──────────────────────────────────────────────────────── */
 .tabellram {
@@ -367,9 +347,16 @@ table.roadmap tbody tr:hover { background: var(--panel); }
 .t-kalla { max-width: 230px; }
 .t-tom { color: var(--ink-3); }
 .t-atg { width: 44px; text-align: center; }
-a.t-lank { font-size: var(--grad-kontroll); text-decoration: none; color: var(--ink-3); transition: color var(--tid-snabb) var(--kurva); }
-a.t-lank:hover, a.t-lank:focus-visible { color: var(--accent); }
-a.t-lank:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 4px; }
+/* Pennan och snabbvalet i åtgärdscellen. Knappar och inte länkar: de öppnar
+   posten i panelen, de navigerar inte. */
+.t-lank {
+  appearance: none; background: none; border: 0; padding: 0; cursor: pointer;
+  font-family: inherit; font-size: var(--grad-kontroll); line-height: 1;
+  text-decoration: none; color: var(--ink-3); transition: color var(--tid-snabb) var(--kurva);
+}
+.t-lank:hover, .t-lank:focus-visible { color: var(--accent); }
+.t-lank[data-skippa]:hover, .t-lank[data-skippa]:focus-visible { color: var(--serious); }
+.t-lank:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 4px; }
 
 /* Rubriken bär starten · den enda kolumnen som syns utan att tabellen
    scrollas i sidled på en telefon (min-width 780 i en overflow-x-ram). */
@@ -392,7 +379,7 @@ a.t-lank:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; 
 tr:hover .t-start .pil { opacity: 1; transform: none; }
 
 /* Åtgärdscellen skriver ut båda för den som sitter vid en skärm */
-.t-atg-bred { width: 132px; text-align: right; white-space: nowrap; }
+.t-atg-bred { width: 158px; text-align: right; white-space: nowrap; }
 .t-starta-ord {
   font-family: var(--fakta); font-weight: 600; font-size: var(--grad-etikett);
   letter-spacing: .05em; text-transform: uppercase;
@@ -402,7 +389,7 @@ tr:hover .t-start .pil { opacity: 1; transform: none; }
 .t-starta-ord:hover, .t-starta-ord:focus-visible { color: var(--accent); }
 .t-starta-ord:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 4px; }
 .t-starta-ord:hover .pil, .t-starta-ord:focus-visible .pil { transform: translateX(3px); }
-.t-atg-bred a + a { margin-left: var(--rum-3); }
+.t-atg-bred > * + * { margin-left: var(--rum-3); }
 
 /* Kanban · starten tar platsen kategorin annars breder ut sig på */
 a.kstarta {
@@ -413,7 +400,7 @@ a.kstarta {
 }
 a.kstarta:hover, a.kstarta:focus-visible { color: var(--accent); }
 a.kstarta:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 4px; }
-a.kstarta + a.kandra { margin-left: var(--rum-3); }
+a.kstarta + .kandra { margin-left: var(--rum-3); }
 tr.grupprad td {
   background: var(--panel); font-family: var(--fakta); font-weight: 600;
   font-size: var(--grad-etikett); letter-spacing: .06em; text-transform: uppercase;
@@ -457,9 +444,15 @@ tr.grupprad .gantal { color: var(--ink-3); margin-left: var(--rum-2); }
 .kkort.dras { opacity: .45; }
 .kkort .krubrik { font-size: var(--grad-fin); font-weight: 650; line-height: 1.4; margin-bottom: var(--rum-2); text-wrap: pretty; }
 .kkort .kmeta { display: flex; align-items: center; gap: var(--rum-2); flex-wrap: wrap; }
-a.kandra { margin-left: auto; font-size: var(--grad-text); line-height: 1; text-decoration: none; color: var(--ink-3); transition: color var(--tid-snabb) var(--kurva); }
-a.kandra:hover, a.kandra:focus-visible { color: var(--accent); }
-a.kandra:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 4px; }
+.kandra {
+  appearance: none; background: none; border: 0; padding: 0; cursor: pointer;
+  margin-left: auto; font-family: inherit; font-size: var(--grad-text); line-height: 1;
+  text-decoration: none; color: var(--ink-3); transition: color var(--tid-snabb) var(--kurva);
+}
+.kandra + .kandra { margin-left: var(--rum-3); }
+.kandra:hover, .kandra:focus-visible { color: var(--accent); }
+.kandra[data-skippa]:hover, .kandra[data-skippa]:focus-visible { color: var(--serious); }
+.kandra:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 4px; }
 .ktomt {
   color: var(--ink-3); font-family: var(--fakta); font-weight: 500; font-size: var(--grad-etikett);
   text-align: center; padding: var(--rum-4) 0; border: 1px dashed var(--line-stark); border-radius: var(--radie-s);
@@ -592,6 +585,47 @@ footer.fot .kallrad {
 }
 .pp-flagga .tecken { color: var(--serious); font-size: 15px; line-height: 1.35; flex-shrink: 0; }
 .pp-flagga b { color: var(--ink); font-weight: 600; }
+/* ── Rubriken och beskrivningen, redigerade i panelen ────────────────
+   Förut låg de i ett formulär inne i kortet: tre rader att skriva en
+   beskrivning i, i ett rutnät som hoppade när kortet växte — och bara i
+   kortvyn, så pennan i tabellen och i Kanban ledde någon annanstans. Här får
+   texten bladets hela bredd, och ytan är densamma oavsett vy. */
+.pp-redrad { margin: var(--rum-3) 0 0; }
+.pp-red-vipp {
+  appearance: none; background: none; border: 0; cursor: pointer; padding: 0;
+  color: var(--ink-3); font-family: var(--fakta); font-weight: 600;
+  font-size: var(--grad-etikett); letter-spacing: .05em; text-transform: uppercase;
+  transition: color var(--tid-snabb) var(--kurva);
+}
+.pp-red-vipp:hover { color: var(--accent); }
+.pp-red-vipp:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; border-radius: 4px; }
+.pp-red { margin: var(--rum-3) 0 0; }
+.pp-red[hidden] { display: none; }
+.pp-red label {
+  display: block; margin-bottom: var(--rum-3);
+  font-family: var(--fakta); font-weight: 600; font-size: var(--grad-etikett);
+  letter-spacing: .06em; text-transform: uppercase; color: var(--ink-2);
+}
+.pp-red input, .pp-red textarea {
+  display: block; width: 100%; margin-top: 6px;
+  background: var(--paper); color: var(--ink);
+  border: 1px solid var(--line-stark); border-radius: var(--radie-s);
+  padding: 10px 12px; font-family: var(--sprak); font-size: var(--grad-fin);
+  line-height: 1.65; resize: vertical;
+}
+/* Plats att skriva i. `field-sizing` växer med texten där den finns; annars
+   bär rows-attributet och min-height samma golv. */
+.pp-red textarea { min-height: 190px; field-sizing: content; max-height: 52vh; }
+.pp-red input:focus-visible, .pp-red textarea:focus-visible {
+  outline: 2px solid var(--accent); outline-offset: -1px;
+}
+.pp-red .lapp {
+  margin: 0; font-family: var(--fakta); font-weight: 500;
+  font-size: var(--grad-etikett); letter-spacing: .02em; color: var(--ink-3);
+  text-transform: none; line-height: 1.7;
+}
+.pp-red .lapp code { font-family: var(--fakta); font-size: .95em; color: var(--ink-2); }
+
 /* Vad hinken betyder. Texten står i konfigen och syntes förut bara som ännu
    en tooltip, på översiktens rutor. */
 .pp-hink {

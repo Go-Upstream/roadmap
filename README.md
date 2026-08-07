@@ -78,6 +78,13 @@ och går att kopiera rakt av.
      stå en hink för det som inte är placerat; «Obestämt» är ett bra namn,
      eftersom den då ställer en fråga i stället för att vara en skräphög.
      Varje fas pekar på en `--fas-*`-token i temat.
+   - `skippa` — **snabbvalet i vyerna**, `{ ord, fas }`. `ord` är verbet på
+     knappen och `fas` är hinken den lägger posten i; förvalet är
+     `{ ord: 'Skippa', fas: 'uteslutet' }`, så fältet behövs bara för ett
+     projekt som kallar hinken något annat. Saknas hinken i `faser` ritas
+     knappen inte alls.
+   - `promptKontext` — sätt `false` för att stänga av faktablocket motorn
+     annars lägger sist i varje prompt. Se `prompt` nedan.
    - `obesvarad` — etiketten för flaggan nedan. Utelämnas den blir det
      «Öppen fråga».
    - `omradeOrdning` — områdena i den ordning de ska stå. Ett område som
@@ -85,8 +92,25 @@ och går att kopiera rakt av.
    - `prioOrdning` — orden för prioritet och deras inbördes ordning.
    - `sidfot`, `kallor` — HTML. Bruksanvisningen för vyerna står i
      `mall.html` och behöver inte upprepas.
-   - `prompt` — texterna. Det är den enda delen som är värd att lägga tid på:
-     en prompt som inte säger var posten bor ger en session som gissar.
+   - `prompt` — texterna. Det är den enda delen som är värd att lägga tid på.
+
+     **De ska säga vad sessionen ska göra, inte vad posten innehåller.**
+     Motorn lägger själv posten i klartext sist i varje prompt — rubrik,
+     beskrivning, leverans med sin förklaring, område, prio, källa och en
+     eventuell flagga — under rubriken `--- Posten, ur roadmapen ---`. Det
+     löser felet som annars är svårt att se: en prompt som bara namnger en
+     rubrik ger en session som börjar med att gissa vad rubriken betyder,
+     eftersom **beskrivningen aldrig följde med**. En konfig som räknar upp
+     samma fakta säger dem två gånger; `promptKontext: false` stänger av
+     blocket för ett projekt som hellre skriver dem själv.
+
+     Det som gör resten av prompten användbar är ordningen: *läs först, säg
+     vad du tänker göra, bygg sedan* — och var ändringen ska landa när den är
+     gjord. `exempel/konfig.js` är skriven så och går att kopiera rakt av.
+
+     Fyra texter, alla fyra använda: `session` (Starta session), `andra`
+     (pennan, öppnad utan att något ändrats), `flytt` (ett drag i Kanban) och
+     `uppdatera` (varje konkret ändring i panelen, snabbvalet inräknat).
 
 4. **Skriv `data.js`.** En `const ITEMS = [...]` där varje post har
    `t` (rubrik), `d` (beskrivning), `fas`, `omr` (område), `prio` och
@@ -112,12 +136,27 @@ och går att kopiera rakt av.
    inte bryter rad, kommer efter en sekunds hovrande — och **på en telefon
    inte finns alls**, eftersom det inte går att hovra.
 
-   **Fyra fält går att ändra i panelen**: hinken, området, prio och flaggan.
-   Ett val skriver om **prompten**, aldrig posten — sidan byggs ur repot, så
-   ett sparat värde hade skrivits över tyst vid nästa bygge. Det valda får en
-   streckad ram, en rad säger vad som ändrats, och knappen byter till «Öppna
-   session med ändringen», som öppnar `K.prompt.uppdatera`. Samma mekanik som
-   en flytt i Kanban, och samma skydd mot att trycka fel.
+   **Sex fält går att ändra i panelen**: rubriken, beskrivningen, hinken,
+   området, prio och flaggan. Ett val skriver om **prompten**, aldrig posten —
+   sidan byggs ur repot, så ett sparat värde hade skrivits över tyst vid nästa
+   bygge. Det valda får en streckad ram, en rad säger vad som ändrats, och
+   knappen byter till «Öppna session med ändringen», som öppnar
+   `K.prompt.uppdatera`. Samma mekanik som en flytt i Kanban, och samma skydd
+   mot att trycka fel.
+
+   **Pennan ✎ i alla tre vyerna öppnar samma panel**, med rubrik och
+   beskrivning framme som textfält. Den låg förut som ett formulär inne i
+   kortet — tre rader att skriva en beskrivning i, i ett rutnät som hoppade
+   när kortet växte — och bara där, så pennan i tabellen och i Kanban startade
+   en session i stället för att öppna en redigering. Nu är ytan en, och den
+   har bladets hela bredd.
+
+   **Snabbvalet ⊘ lägger posten åt sidan.** Det finns i alla tre vyerna och på
+   varje post som inte redan ligger där, och det öppnar panelen med hinken
+   omställd i utkastet — inte en session direkt. Ändringsraden är då redan
+   framme och «Ångra» ligger bredvid, vilket är samma skydd som Kanban-draget
+   har. Prompten ber sessionen fråga efter **skälet** och skriva in det:
+   hinken finns för det aktivt bortvalda, och utan skäl är den en skräphög.
 
    Det snabbaste sättet att få den första versionen är att låta en session
    läsa projektets egna dokument och skriva filen. Räkna med att rätta den
@@ -192,7 +231,11 @@ pinning dit. Tagga med `vMAJOR.MINOR.PATCH`, och höj major när ett projekts
   sidled, så på en telefon syns rubrikkolumnen först. Därför startar en
   session både från rubriken och från åtgärdscellen.
 - **En flytt i Kanban ändrar ingenting.** Den öppnar en prompt som föreslår
-  ändringen i dokumentet posten kommer ur.
+  ändringen i dokumentet posten kommer ur. Det gäller varje ändring i sidan,
+  snabbvalet ⊘ inräknat.
+- **Prompten bär posten i klartext.** Motorn lägger den sist, under
+  `--- Posten, ur roadmapen ---`. Konfigens texter kan därför handla om vad
+  sessionen ska göra.
 - **Motorn körs utan `use strict`**, insvept i en IIFE i `mall.html`.
 - **`bygg.ts` läser projektets filer från `process.cwd()`** och sina egna från
   sin egen katalog. Det är därför motorn kan bo i `node_modules/` utan att

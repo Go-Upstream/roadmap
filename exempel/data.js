@@ -13,4 +13,7 @@
     { t: 'Något som redan är byggt',
       d: 'Levererat är dolt som förval — det som är gjort ska inte konkurrera med det som återstår. Klicka fasrutan eller sök för att se den här raden.',
       fas: 'levererat', omr: 'Drift', k: 'docs/genomfort.md' },
+    { t: 'Något som valdes bort',
+      d: 'Snabbvalet **Skippa** i vyerna lägger en post här. Hinken är inte en skräphög: den bär *skälet*, så att frågan inte kommer tillbaka om ett halvår utan svar. Posten har inget snabbval kvar — den ligger redan där.',
+      fas: 'uteslutet', omr: 'Drift', k: 'docs/beslut.md' },
   ];

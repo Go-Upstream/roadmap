@@ -30,6 +30,22 @@
     K.obesvarad || {},
   );
 
+  /**
+   * Snabbvalet «Skippa»: ett klick i vilken vy som helst som lägger posten i
+   * den fas projektet använder för det aktivt bortvalda.
+   *
+   * Motorn känner inget projekt, men **`levererat` och `uteslutet` är
+   * tillstånd och inte leveranser** — de två nycklarna är redan en konvention
+   * i konfigen, och `uteslutet` är därför förvalet här. Ett projekt som kallar
+   * hinken något annat pekar om den med `K.skippa`.
+   *
+   * `ord` är verbet på knappen och `fas` är hinken den lägger posten i. Saknas
+   * hinken i `K.faser` ritas snabbvalet inte alls — hellre ingen knapp än en
+   * knapp som pekar på en fas som inte finns.
+   */
+  const SKIPPA = Object.assign({ fas: 'uteslutet', ord: 'Skippa' }, K.skippa || {});
+  const kanSkippa = (it) => !!FAS[SKIPPA.fas] && it.fas !== SKIPPA.fas;
+
   const esc = (s) => String(s).replace(/[&<>"]/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;' }[c]));
 
   // Escapa och markera sökträffar — skiftlägesokänsligt, alla förekomster.
@@ -76,9 +92,39 @@
   // inte till motorn — den står i konfigens prompt-block.
   const lank = (prompt) => 'https://claude.ai/code?' + new URLSearchParams({ prompt, repositories: K.repo }).toString();
 
-  const sessionURL = (it) => lank(K.prompt.session(it, FAS));
-  const andraURL   = (it) => lank(K.prompt.andra(it, FAS));
-  const flyttURL   = (it, till) => lank(K.prompt.flytt(it, till, grupp, FAS));
+  /**
+   * Posten i klartext, lagd sist i varje prompt.
+   *
+   * Konfigens prompttexter är korta av en anledning: de skrivs en gång och ska
+   * gå att läsa. Men en session som bara får «jag vill jobba på "X"» får en
+   * rubrik och ingenting annat — **beskrivningen, som är hela innehållet i en
+   * roadmap-post, följde inte med**, och sessionen börjar med att gissa eller
+   * med att leta. Det är motorn som har posten, så det är motorn som lägger på
+   * fakta; konfigen får fortsätta handla om vad sessionen ska göra.
+   *
+   * Blocket är märkt och står sist, så att det går att läsa som en bilaga och
+   * inte blandas ihop med uppdraget. Ett projekt som hellre skriver sina egna
+   * fakta stänger av det med `promptKontext: false` i konfigen.
+   */
+  function promptKontext(it) {
+    const f = FAS[it.fas];
+    const rader = [
+      '',
+      '--- Posten, ur roadmapen ---',
+      `Rubrik: ${it.t}`,
+      `Beskrivning: ${it.d}`,
+      `Leverans: ${f.label}${f.desc ? ` — ${f.desc}` : ''}`,
+      `Område: ${it.omr}`,
+    ];
+    if (it.prio) rader.push(`Prio: ${it.prio} (ordningen inom ${f.label}, inte mellan leveranser)`);
+    rader.push(`Källa: ${it.k} — posten kommer därifrån, så det dokumentet ändras först.`);
+    if (it.obesvarad) rader.push(`Flagga: ${OBESVARAD.label} — ${OBESVARAD.desc}`);
+    return rader.join('\n');
+  }
+  const medKontext = (text, it) => K.promptKontext === false ? text : `${text}\n${promptKontext(it)}`;
+
+  const sessionURL = (it) => lank(medKontext(K.prompt.session(it, FAS), it));
+  const flyttURL   = (it, till) => lank(medKontext(K.prompt.flytt(it, till, grupp, FAS), it));
 
   // ── Läge ────────────────────────────────────────────────────────
   let fasFilter = null;
@@ -132,6 +178,31 @@
       `<span class="staplar"><i></i><i></i><i></i></span><span class="ord">${it.prio}</span></span>`;
   }
 
+  /**
+   * Snabbvalet, ritat i alla tre vyerna.
+   *
+   * Det öppnar panelen med hinken redan omställd i utkastet — det vill säga
+   * **samma mekanik och samma skydd mot att trycka fel som en flytt i
+   * Kanban**, inte en genväg förbi dem. Sidan sparar ingenting, så ett klick
+   * som direkt öppnat en session hade varit det enda stället i motorn där ett
+   * misstag inte gick att ta tillbaka innan det lämnade sidan.
+   *
+   * `klass` skiljer bara på formen i de tre vyerna; beteendet är ett.
+   */
+  function skippaHTML(it, klass, text) {
+    if (!kanSkippa(it)) return '';
+    return `<button type="button" class="${klass}" draggable="false" data-skippa="${ITEMS.indexOf(it)}" ` +
+      `title="${esc(SKIPPA.ord)} — lägger posten i «${esc(FAS[SKIPPA.fas].label)}». Du får se ändringen innan sessionen öppnas." ` +
+      `aria-label="${esc(SKIPPA.ord)} ${esc(it.t)}">${text}</button>`;
+  }
+
+  /** Pennan · öppnar posten i panelen med rubrik och beskrivning redigerbara. */
+  function andraHTML(it, klass, text) {
+    return `<button type="button" class="${klass}" draggable="false" data-andra="${ITEMS.indexOf(it)}" ` +
+      `title="Ändra rubrik, beskrivning, leverans, område eller prio" ` +
+      `aria-label="Ändra ${esc(it.t)}">${text}</button>`;
+  }
+
   function kortHTML(it) {
     const f = FAS[it.fas];
     return `
@@ -151,21 +222,9 @@
              title="Öppnar claude.ai/code med en förifylld prompt — du granskar den innan sessionen startar">
             Starta session <span class="pil" aria-hidden="true">→</span>
           </a>
-          <button class="andra" type="button" data-i="${ITEMS.indexOf(it)}" aria-expanded="false">Ändra ✎</button>
+          ${skippaHTML(it, 'skippa', esc(SKIPPA.ord) + ' <span aria-hidden="true">⊘</span>')}
+          ${andraHTML(it, 'andra', 'Ändra ✎')}
         </div>
-        <form class="blankett" hidden>
-          <p class="lapp">Ändringen görs i dokumentet posten kommer ur — och i den här vyn — av en ny session. Du granskar prompten innan start.</p>
-          <label>Rubrik
-            <input name="t" value="${esc(it.t)}">
-          </label>
-          <label>Beskrivning
-            <textarea name="d" rows="3">${esc(it.d)}</textarea>
-          </label>
-          <div class="rad">
-            <a class="verkstall slack" title="Inga ändringar ännu">Öppna session med ändringen <span class="pil" aria-hidden="true">→</span></a>
-            <button class="avbryt" type="button">Avbryt</button>
-          </div>
-        </form>
       </article>`;
   }
 
@@ -295,8 +354,7 @@
         <td class="t-mono t-kalla">${hl(it.k)}</td>
         <td class="t-atg-bred"><a class="t-starta-ord" href="${esc(sessionURL(it))}" target="_blank" rel="noopener"
               title="Öppnar claude.ai/code med en förifylld prompt" aria-label="Starta session för ${esc(it.t)}"
-              >Starta <span class="pil" aria-hidden="true">→</span></a><a class="t-lank" href="${esc(andraURL(it))}" target="_blank" rel="noopener"
-              title="Ändra posten" aria-label="Ändra ${esc(it.t)}">✎</a></td>
+              >Starta <span class="pil" aria-hidden="true">→</span></a>${skippaHTML(it, 't-lank', '⊘')}${andraHTML(it, 't-lank', '✎')}</td>
       </tr>`;
   }
 
@@ -335,8 +393,7 @@
         <div class="kmeta">${obesvaradHTML(it)}${prioHTML(it, false)}${meta}
           <a class="kstarta" href="${esc(sessionURL(it))}" draggable="false" target="_blank" rel="noopener"
              title="Öppnar claude.ai/code med en förifylld prompt" aria-label="Starta session för ${esc(it.t)}"
-             >Starta <span class="pil" aria-hidden="true">→</span></a><a class="kandra" href="${esc(andraURL(it))}" draggable="false" target="_blank" rel="noopener"
-             title="Ändra posten" aria-label="Ändra ${esc(it.t)}">✎</a></div>
+             >Starta <span class="pil" aria-hidden="true">→</span></a>${skippaHTML(it, 'kandra', '⊘')}${andraHTML(it, 'kandra', '✎')}</div>
       </article>`;
   }
 
@@ -415,46 +472,12 @@
     if (fokus) sokInput.focus();
   }
 
-  // ── Ändra-formuläret ────────────────────────────────────────────
-  function uppdateraVerkstall(form, i) {
-    const it = ITEMS[i];
-    const nyT = form.elements.t.value.trim();
-    const nyD = form.elements.d.value.trim();
-    const andringar = [];
-    if (nyT && nyT !== it.t) andringar.push(`ny rubrik: "${nyT}"`);
-    if (nyD && nyD !== it.d) andringar.push(`ny beskrivning: "${nyD}"`);
-    const a = form.querySelector('.verkstall');
-    if (!andringar.length) {
-      a.classList.add('slack'); a.removeAttribute('href'); a.title = 'Inga ändringar ännu';
-      return;
-    }
-    a.classList.remove('slack');
-    a.title = 'Öppnar claude.ai/code med ändringen förifylld';
-    a.target = '_blank'; a.rel = 'noopener';
-    a.href = lank(K.prompt.uppdatera(it, andringar));
-  }
-
-  document.addEventListener('click', (e) => {
-    const andraKnapp = e.target.closest('.andra');
-    if (andraKnapp) {
-      const form = andraKnapp.closest('.kort').querySelector('.blankett');
-      form.hidden = !form.hidden;
-      andraKnapp.setAttribute('aria-expanded', String(!form.hidden));
-      if (!form.hidden) { uppdateraVerkstall(form, +andraKnapp.dataset.i); form.elements.t.focus(); }
-      return;
-    }
-    const avbrytKnapp = e.target.closest('.kort .avbryt');
-    if (avbrytKnapp) {
-      const kort = avbrytKnapp.closest('.kort');
-      kort.querySelector('.blankett').hidden = true;
-      kort.querySelector('.andra').setAttribute('aria-expanded', 'false');
-    }
-  });
-  document.addEventListener('input', (e) => {
-    const form = e.target.closest('.blankett');
-    if (form) uppdateraVerkstall(form, +form.closest('.kort').querySelector('.andra').dataset.i);
-  });
-  document.addEventListener('submit', (e) => { if (e.target.closest('.blankett')) e.preventDefault(); });
+  // Rubriken och beskrivningen redigeras i panelen och inte i kortet. Ett
+  // inbäddat formulär i ett kort ger tre rader att skriva en beskrivning i,
+  // mitt i ett rutnät som hoppar när kortet växer — och det fanns bara i
+  // kortvyn, så pennan i tabellen och i Kanban ledde någon annanstans. Panelen
+  // är ett svar på båda: samma yta i alla tre vyerna, och plats att skriva i.
+  document.addEventListener('submit', (e) => { if (e.target.closest('.pp-red')) e.preventDefault(); });
 
   // ── Vy och gruppering ───────────────────────────────────────────
   const vyKort = document.getElementById('vy-kort');
@@ -586,14 +609,24 @@
    * om prompten, aldrig posten — samma mekanik som en flytt i Kanban, och
    * samma skydd mot att trycka fel: ändringen går genom en session som
    * läsaren granskar först.
+   *
+   * **Panelen bär också rubriken och beskrivningen.** De redigerades förut i
+   * ett formulär inne i kortet: tre rader att skriva en beskrivning i, i ett
+   * rutnät som hoppade när kortet växte — och bara i kortvyn, så pennan i
+   * tabellen och i Kanban ledde till en session i stället för till en
+   * redigering. Här får texten hela bladets bredd, och de sex fälten ligger
+   * på samma ställe oavsett vilken vy man kom från.
    */
   const slöja = document.getElementById('slöja');
   const postpanel = document.getElementById('postpanel');
   const valjare = document.getElementById('valjare');
+  const ppRed = document.getElementById('pp-red');
+  const ppRedVipp = document.getElementById('pp-red-vipp');
 
   let aktiv = null;      // posten som visas
   let utkast = {};       // valt men inte skickat
   let sistFokus = null;  // dit fokus går tillbaka när panelen stängs
+  let redigerar = false; // står textfälten framme?
 
   const ppNu = (falt) => (falt in utkast ? utkast[falt] : aktiv[falt]);
 
@@ -627,8 +660,17 @@
   /** Ändringarna i ord — samma meningar går in i prompten och i raden. */
   function ppAndringar() {
     const lista = [];
+    if ('t' in utkast)
+      lista.push(`byt rubrik från "${aktiv.t}" till "${utkast.t}"`);
+    if ('d' in utkast)
+      lista.push(`skriv om beskrivningen till: "${utkast.d}"`);
     if ('fas' in utkast)
-      lista.push(`flytta från leveransen "${FAS[aktiv.fas].label}" till "${FAS[utkast.fas].label}"`);
+      // Snabbvalet är en flytt som alla andra, med ett tillägg: hinken finns
+      // för det aktivt bortvalda, och utan skälet är den en skräphög.
+      lista.push(utkast.fas === SKIPPA.fas
+        ? `flytta från leveransen "${FAS[aktiv.fas].label}" till "${FAS[SKIPPA.fas].label}" — ` +
+          `fråga mig varför den valdes bort och skriv in skälet, så att det går att förstå i efterhand`
+        : `flytta från leveransen "${FAS[aktiv.fas].label}" till "${FAS[utkast.fas].label}"`);
     if ('omr' in utkast)
       lista.push(`byt område från "${aktiv.omr}" till "${utkast.omr}"`);
     if ('prio' in utkast)
@@ -640,16 +682,24 @@
     return lista;
   }
 
-  /** Prompten är projektets, precis som överallt annars i motorn. */
+  /**
+   * Prompten är projektets, precis som överallt annars i motorn. Tre lägen,
+   * och alla tre står i konfigen: en konkret ändring skickas som `uppdatera`,
+   * en öppnad redigering utan ändring som `andra` — det är just den frågan
+   * pennan ställer — och allt annat som `session`.
+   */
   function ppPrompt() {
     const lista = ppAndringar();
-    return lista.length ? K.prompt.uppdatera(aktiv, lista) : K.prompt.session(aktiv, FAS);
+    if (lista.length) return medKontext(K.prompt.uppdatera(aktiv, lista), aktiv);
+    if (redigerar) return medKontext(K.prompt.andra(aktiv, FAS), aktiv);
+    return medKontext(K.prompt.session(aktiv, FAS), aktiv);
   }
 
   function ppRitaAndringar() {
     const lista = ppAndringar();
     const primar = document.getElementById('pp-primar');
-    primar.innerHTML = (lista.length ? 'Öppna session med ändringen' : 'Starta session') +
+    primar.innerHTML = (lista.length ? 'Öppna session med ändringen'
+      : redigerar ? 'Öppna session för att ändra' : 'Starta session') +
       ' <span class="pil" aria-hidden="true">→</span>';
     primar.href = lank(ppPrompt());
     const rutan = document.getElementById('pp-andringar');
@@ -680,14 +730,22 @@
         `title="${obesvarad ? 'Ta bort flaggan' : 'Markera som ' + esc(OBESVARAD.label.toLowerCase())}">` +
         `${esc(OBESVARAD.label)}<span class="karet" aria-hidden="true">▾</span></button>`;
 
-    document.getElementById('pp-titel').textContent = aktiv.t;
+    // Rubriken och brödtexten visar utkastet och inte posten: skriver man om
+    // dem i formuläret nedan ska panelen visa det man skickar, inte det som
+    // stod i filen. Blir de tomma faller de tillbaka på posten — ett halvt
+    // raderat fält är inte en ändring.
+    document.getElementById('pp-titel').textContent = ppNu('t');
 
     document.getElementById('pp-flagga').innerHTML = obesvarad
       ? `<div class="pp-flagga"><span class="tecken" aria-hidden="true">⚑</span><div>` +
         `<b>${esc(OBESVARAD.desc)}</b> Den blockerar ${esc(f.label)}.</div></div>`
       : '';
 
-    document.getElementById('pp-brod').innerHTML = md(esc(aktiv.d));
+    // Brödtexten står inte kvar bredvid rutan som redigerar den — samma text
+    // två gånger, med två svar på vad som gäller.
+    const brod = document.getElementById('pp-brod');
+    brod.innerHTML = md(esc(ppNu('d')));
+    brod.hidden = redigerar;
 
     document.getElementById('pp-hink').innerHTML =
       `<span class="etikett" style="--c:${f.color}">${esc(f.label)}</span><p>${esc(f.desc)}</p>`;
@@ -729,17 +787,52 @@
 
   const ppStangValjare = () => valjare.removeAttribute('data-öppen');
 
-  function ppOppna(it, fran) {
+  /** Textfälten fram eller undan. Fälten fylls ur utkastet, aldrig tvärtom. */
+  function ppSattRed(pa) {
+    redigerar = pa;
+    ppRed.hidden = !pa;
+    ppRedVipp.setAttribute('aria-expanded', String(pa));
+    ppRedVipp.textContent = pa ? 'Dölj textfälten' : 'Ändra rubrik och beskrivning ✎';
+    if (pa) { ppRed.elements.t.value = ppNu('t'); ppRed.elements.d.value = ppNu('d'); }
+  }
+
+  /**
+   * Läser textfälten in i utkastet.
+   *
+   * Ett tomt fält är ingen ändring utan en halvt raderad rad — «byt rubrik
+   * till ""» är inte något en session kan göra något vettigt av. Samma regel
+   * som väljaren följer: skrivs ursprunget tillbaka finns ingen ändring kvar.
+   */
+  function ppLasRed() {
+    ['t', 'd'].forEach(falt => {
+      const v = ppRed.elements[falt].value.trim();
+      if (!v || v === aktiv[falt]) delete utkast[falt]; else utkast[falt] = v;
+    });
+    document.getElementById('pp-titel').textContent = ppNu('t');
+    ppRitaAndringar();
+    if (document.getElementById('pp-promptruta').innerHTML) ppVisaPrompt(true);
+  }
+
+  /**
+   * `opt.utkast` är förvalda ändringar — snabbvalet «Skippa» kommer in den
+   * vägen, och panelen öppnas då med ändringsraden redan framme och fokus på
+   * knappen som skickar den. `opt.redigera` öppnar textfälten, vilket är vad
+   * pennan i de tre vyerna gör.
+   */
+  function ppOppna(it, fran, opt) {
     aktiv = it;
-    utkast = {};
+    utkast = Object.assign({}, opt && opt.utkast);
     sistFokus = fran || null;
     document.getElementById('pp-promptruta').innerHTML = '';
+    ppSattRed(!!(opt && opt.redigera));
     ppRita();
     slöja.setAttribute('data-öppen', '');
     slöja.setAttribute('aria-hidden', 'false');
     document.documentElement.setAttribute('data-panel', '');
     document.getElementById('pp-kropp').scrollTop = 0;
-    document.getElementById('pp-stang').focus();
+    if (redigerar) ppRed.elements.t.focus();
+    else if (opt && opt.utkast) document.getElementById('pp-primar').focus();
+    else document.getElementById('pp-stang').focus();
   }
 
   function ppStang() {
@@ -770,9 +863,15 @@
     else ppOppnaValjare(knapp.dataset.valj, knapp);
   });
 
-  document.getElementById('pp-angra').addEventListener('click', () => { utkast = {}; ppRita(); });
+  document.getElementById('pp-angra').addEventListener('click', () => {
+    utkast = {};
+    if (redigerar) ppSattRed(true);   // fälten tillbaka till postens text
+    ppRita();
+  });
   document.getElementById('pp-visa-prompt').addEventListener('click', () => ppVisaPrompt(false));
   document.getElementById('pp-stang').addEventListener('click', ppStang);
+  ppRedVipp.addEventListener('click', () => { ppSattRed(!redigerar); ppRita(); if (redigerar) ppRed.elements.t.focus(); });
+  ppRed.addEventListener('input', ppLasRed);
   slöja.addEventListener('click', (e) => { if (e.target === slöja) ppStang(); });
   addEventListener('resize', ppStangValjare);
 
@@ -785,8 +884,15 @@
   document.addEventListener('pointerdown', () => { dragPagar = false; }, true);
 
   document.addEventListener('click', (e) => {
+    if (dragPagar) return;
+    // Pennan och snabbvalet, i alla tre vyerna. Båda öppnar samma panel —
+    // skillnaden är vad den står öppnad på.
+    const red = e.target.closest('[data-andra]');
+    if (red) { e.preventDefault(); ppOppna(ITEMS[+red.dataset.andra], red, { redigera: true }); return; }
+    const sk = e.target.closest('[data-skippa]');
+    if (sk) { e.preventDefault(); ppOppna(ITEMS[+sk.dataset.skippa], sk, { utkast: { fas: SKIPPA.fas } }); return; }
     const traff = e.target.closest('[data-oppna]');
-    if (!traff || dragPagar) return;
+    if (!traff) return;
     e.preventDefault();
     ppOppna(ITEMS[+traff.dataset.oppna], traff);
   });
@@ -799,6 +905,10 @@
       return;
     }
     if (e.key !== 'Escape') return;
+    // Escape i ett textfält stänger inte panelen. Den som skrivit ett stycke
+    // och råkar trycka Escape ska inte förlora det på en tangenttryckning —
+    // fokus lämnar fältet, och nästa Escape stänger som vanligt.
+    if (e.target.closest?.('.pp-red')) { e.preventDefault(); ppRedVipp.focus(); return; }
     if (valjare.hasAttribute('data-öppen')) ppStangValjare();
     else if (slöja.hasAttribute('data-öppen')) ppStang();
   });
