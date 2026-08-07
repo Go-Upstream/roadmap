@@ -68,4 +68,4 @@ approvals, endast **squash**, require conversation resolution) och **Require
 status checks to pass** med kontrollen **`prov`** samt *require branches to be
 up to date*. Bypass-listan lämnas tom. Under **Settings → General → Pull
 Requests:** slå på *Allow auto-merge* och *Automatically delete head
-branches*. Samma uppsättning som i ABkoll, AntiqFlow och Drilla.
+branches*. Samma uppsättning som i ABkoll, Drilla och Helny.
