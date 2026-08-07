@@ -20,12 +20,15 @@ när projektet flyttar fram sin pinnade commit.
   syns via PR-prenumerationen eller skalet rapporteras som overifierat; en
   påminnelse schemaläggs bara när ägaren uttryckligen bett om en. (Gemensamt
   Go-Upstream-beslut 4 aug 2026, underlaget i ABkolls `docs/beslut.md`.)
-- **Auto-merge får användas brett här.** En merge till `main` driftsätter
-  ingenting: konsumenterna är pinnade och påverkas först när pinnen flyttas.
-  Slå på auto-merge när PR:en är grön — utom när ändringen bryter motorns
-  kontrakt mot konsumenterna (fältnamn i posterna, CSS-klasser temafilerna
-  riktar sig mot, mallens platshållare). Den sortens PR lämnas åt ägaren,
-  annars ärver nästa pinnflytt överraskningen.
+- **Auto-merge får användas brett här, och armeras av sessionen som öppnar
+  PR:en — direkt vid öppnandet** (`mcp__github__enable_pr_auto_merge`,
+  squash), medan kontrollen kör: knappen försvinner när PR:en väl är grön,
+  och utan armering mergas ingenting av sig själv. En merge till `main`
+  driftsätter ingenting — konsumenterna är pinnade och påverkas först när
+  pinnen flyttas. Undantaget är ändringar som bryter motorns kontrakt mot
+  konsumenterna (fältnamn i posterna, CSS-klasser temafilerna riktar sig mot,
+  mallens platshållare): den sortens PR lämnas grön åt ägaren, annars ärver
+  nästa pinnflytt överraskningen.
 - **En «release» är en pinnflytt.** Uppdatera commit-hashen för
   `@go-upstream/roadmap` i konsumentens `package.json` (ABkoll, Drilla,
   AntiqFlow), i en egen PR i det repot. Bumpa `version` här vid
