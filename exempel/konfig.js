@@ -39,12 +39,17 @@ const K = {
   // kallar hinken något annat. Saknas hinken i `faser` ritas knappen inte.
   skippa: { ord: 'Skippa', fas: 'uteslutet' },
 
-  // Etiketten för posternas obesvarad-flagga. Utelämnas den använder motorn
-  // «Öppen fråga». Flaggan är inte en fas: en fråga hör till den leverans den
-  // blockerar, och det är just det den ska visa.
+  // Etiketterna för posternas obesvarad-flagga, ett läge i taget. Utelämnas de
+  // använder motorn «Öppen fråga» respektive «Väntar på extern part». Flaggan
+  // är inte en fas: den hör till den leverans den blockerar, och det är just
+  // det den ska visa.
   obesvarad: {
     label: 'Öppen fråga',
     desc: 'Nästa steg är ett svar, inte kod. Den blockerar leveransen den står i.',
+  },
+  obesvaradExtern: {
+    label: 'Väntar på extern part',
+    desc: 'Nästa steg ligger hos någon utanför teamet, inte hos oss. Den blockerar leveransen den står i.',
   },
 
   omradeOrdning: ['Produkt', 'Drift'],

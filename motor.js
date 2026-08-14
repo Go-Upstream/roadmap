@@ -15,20 +15,45 @@
   const VAL_NYCKEL = K.nyckel + '-val';
   const TEMA_NYCKEL = K.nyckel + '-tema';
   /**
-   * Flaggan «obesvarad»: en post vars nästa steg är ett svar, inte ett bygge.
+   * Flaggan «obesvarad»: en post vars nästa steg inte är ett bygge.
    *
-   * Den är ett **tillstånd på posten och inte en fas**, eftersom en fråga hör
-   * till den leverans den blockerar. Låg den som en egen fas gick det inte att
-   * se vad den stod i vägen för — bara att den fanns.
+   * Den är ett **tillstånd på posten och inte en fas**, eftersom frågan eller
+   * väntan hör till den leverans den blockerar. Låg den som en egen fas gick
+   * det inte att se vad den stod i vägen för — bara att den fanns.
    *
-   * Etiketten är projektets, med ett förval: motorn känner inget projekt, men
-   * «öppen fråga» är ett allmänt nog begrepp för att inte kräva konfiguration
-   * av den som bara vill komma igång.
+   * Två lägen, inte ett: «fraga» är nästa steg ett svar från någon i teamet,
+   * «extern» är nästa steg någon utanför det — en leverantör, en myndighet, en
+   * kund. Skillnaden är vem som håller bollen, och den påverkar vad man gör
+   * medan man väntar, så den förtjänar sitt eget läge i stället för att gömmas
+   * i beskrivningen.
+   *
+   * Etiketterna är projektets, med ett förval vardera: motorn känner inget
+   * projekt, men «öppen fråga» och «väntar på extern part» är allmänna nog
+   * begrepp för att inte kräva konfiguration av den som bara vill komma igång.
    */
   const OBESVARAD = Object.assign(
-    { label: 'Öppen fråga', desc: 'Nästa steg är ett svar, inte kod. Den blockerar leveransen den står i.' },
+    { label: 'Öppen fråga', desc: 'Nästa steg är ett svar, inte kod. Den blockerar leveransen den står i.', color: 'var(--serious)' },
     K.obesvarad || {},
   );
+  const OBESVARAD_EXTERN = Object.assign(
+    { label: 'Väntar på extern part', desc: 'Nästa steg ligger hos någon utanför teamet, inte hos oss. Den blockerar leveransen den står i.', color: 'var(--warn)' },
+    K.obesvaradExtern || {},
+  );
+  const OBESVARAD_LAGE = { fraga: OBESVARAD, extern: OBESVARAD_EXTERN };
+
+  /**
+   * Vilket läge posten bär: `'fraga'`, `'extern'`, eller `null` om ingen
+   * flagga är satt.
+   *
+   * `obesvarad: true` är kvar som ett alias för `'fraga'` — den stavningen är
+   * vad varje post som redan finns bär, i alla tre konsumenterna, och den ska
+   * fortsätta betyda samma sak efter den här ändringen.
+   */
+  function obesvaradLage(it) {
+    if (it.obesvarad === true || it.obesvarad === 'fraga') return 'fraga';
+    if (it.obesvarad === 'extern') return 'extern';
+    return null;
+  }
 
   /**
    * Snabbvalet «Skippa»: ett klick i vilken vy som helst som lägger posten i
@@ -118,7 +143,8 @@
     ];
     if (it.prio) rader.push(`Prio: ${it.prio} (ordningen inom ${f.label}, inte mellan leveranser)`);
     rader.push(`Källa: ${it.k} — posten kommer därifrån, så det dokumentet ändras först.`);
-    if (it.obesvarad) rader.push(`Flagga: ${OBESVARAD.label} — ${OBESVARAD.desc}`);
+    const lage = obesvaradLage(it);
+    if (lage) rader.push(`Flagga: ${OBESVARAD_LAGE[lage].label} — ${OBESVARAD_LAGE[lage].desc}`);
     return rader.join('\n');
   }
   const medKontext = (text, it) => K.promptKontext === false ? text : `${text}\n${promptKontext(it)}`;
@@ -128,7 +154,7 @@
 
   // ── Läge ────────────────────────────────────────────────────────
   let fasFilter = null;
-  let obesvaradFilter = false;
+  let obesvaradFilter = null; // null | 'fraga' | 'extern'
   let fraga = '';        // normaliserad sökning
   let fragaRa = '';      // som skriven, för visning
   let vy = 'kort';       // 'kort' | 'tabell' | 'kanban'
@@ -156,20 +182,25 @@
     } catch (e) { /* trasig lagring — behåll standard */ }
   }
 
-  const traffar = (it) => !fraga ||
-    (it.t + ' ' + it.d + ' ' + it.omr + ' ' + it.k + ' ' + FAS[it.fas].label +
-     (it.obesvarad ? ' ' + OBESVARAD.label : '')).toLowerCase().includes(fraga);
+  const traffar = (it) => {
+    if (!fraga) return true;
+    const lage = obesvaradLage(it);
+    return (it.t + ' ' + it.d + ' ' + it.omr + ' ' + it.k + ' ' + FAS[it.fas].label +
+      (lage ? ' ' + OBESVARAD_LAGE[lage].label : '')).toLowerCase().includes(fraga);
+  };
 
   // Levererat är dolt som förval — det som är gjort ska inte konkurrera med det som återstår.
   const synliga = () => (fasFilter ? ITEMS.filter(i => i.fas === fasFilter)
     : ITEMS.filter(i => fraga || i.fas !== 'levererat'))
-    .filter(i => !obesvaradFilter || i.obesvarad)
+    .filter(i => !obesvaradFilter || obesvaradLage(i) === obesvaradFilter)
     .filter(traffar);
 
   /** Brickan som säger att posten är obesvarad. Tom sträng när den inte är det. */
   function obesvaradHTML(it) {
-    if (!it.obesvarad) return '';
-    return `<span class="obesvarad" title="${esc(OBESVARAD.desc)}">${esc(OBESVARAD.label)}</span>`;
+    const lage = obesvaradLage(it);
+    if (!lage) return '';
+    const o = OBESVARAD_LAGE[lage];
+    return `<span class="obesvarad${lage === 'extern' ? ' extern' : ''}" title="${esc(o.desc)}">${esc(o.label)}</span>`;
   }
 
   function prioHTML(it, tom) {
@@ -285,24 +316,30 @@
         `title="${esc(FAS[k].desc)} Klicka för att visa bara ${FAS[k].label.toLowerCase()}.">` +
         `<div class="tal">${n}</div><div class="etikett"><span class="prick"></span>${FAS[k].label}</div></button>`;
     });
-    // Obesvarade får en egen ruta, sist och bara om det finns några. Den
-    // filtrerar på tvären mot faserna — en fråga har både en leverans och det
-    // här tillståndet, så rutorna utesluter inte varandra.
-    const nObes = ITEMS.filter(i => i.obesvarad).length;
-    if (nObes) {
-      html += `<button class="ruta obesvarad-ruta${obesvaradFilter ? '' : ' av'}" data-obesvarad="1" ` +
-        `aria-pressed="${obesvaradFilter}" title="${esc(OBESVARAD.desc)} Klicka för att visa bara dem.">` +
-        `<div class="tal">${nObes}</div><div class="etikett"><span class="prick"></span>${esc(OBESVARAD.label)}</div></button>`;
+    // Obesvarade får en egen ruta per läge, sist och bara om det finns några
+    // av det läget. De filtrerar på tvären mot faserna — en fråga har både en
+    // leverans och ett av de här tillstånden, så rutorna utesluter inte
+    // varandra.
+    for (const lage of ['fraga', 'extern']) {
+      const n = ITEMS.filter(i => obesvaradLage(i) === lage).length;
+      if (!n) continue;
+      const o = OBESVARAD_LAGE[lage];
+      const av = obesvaradFilter === lage ? '' : ' av';
+      html += `<button class="ruta obesvarad-ruta${av}" data-obesvarad="${lage}" ` +
+        `aria-pressed="${obesvaradFilter === lage}" style="--c:${o.color}" ` +
+        `title="${esc(o.desc)} Klicka för att visa bara dem.">` +
+        `<div class="tal">${n}</div><div class="etikett"><span class="prick"></span>${esc(o.label)}</div></button>`;
     }
 
     ov.innerHTML = html;
     ov.querySelectorAll('.ruta').forEach(btn => btn.addEventListener('click', () => {
       if (btn.dataset.obesvarad) {
-        obesvaradFilter = !obesvaradFilter;
+        const lage = btn.dataset.obesvarad;
+        obesvaradFilter = obesvaradFilter === lage ? null : lage;
       } else {
         const k = btn.dataset.fas || null;
         fasFilter = (k === fasFilter) ? null : k;
-        if (!k) obesvaradFilter = false;   // «Poster totalt» rensar allt
+        if (!k) obesvaradFilter = null;   // «Poster totalt» rensar allt
       }
       ritaAllt();
     }));
@@ -312,7 +349,10 @@
     const el = document.getElementById('filterrad');
     const delar = [];
     if (fasFilter) delar.push(`<b>${FAS[fasFilter].label}</b> — ${esc(FAS[fasFilter].desc)}`);
-    if (obesvaradFilter) delar.push(`<b>${esc(OBESVARAD.label)}</b> — ${esc(OBESVARAD.desc)}`);
+    if (obesvaradFilter) {
+      const o = OBESVARAD_LAGE[obesvaradFilter];
+      delar.push(`<b>${esc(o.label)}</b> — ${esc(o.desc)}`);
+    }
     if (delar.length) {
       el.hidden = false;
       el.innerHTML = `Visar bara ${delar.join(' och ')} ` +
@@ -628,7 +668,8 @@
   let sistFokus = null;  // dit fokus går tillbaka när panelen stängs
   let redigerar = false; // står textfälten framme?
 
-  const ppNu = (falt) => (falt in utkast ? utkast[falt] : aktiv[falt]);
+  const ppNu = (falt) =>
+    falt in utkast ? utkast[falt] : falt === 'obesvarad' ? (obesvaradLage(aktiv) || false) : aktiv[falt];
 
   /** Fälten som går att ändra, och vad väljaren erbjuder för var och en. */
   const PP_FALT = {
@@ -647,15 +688,16 @@
       val: Object.keys(PRIO_ORDNING).map(p => ({ v: p, label: p, farg: 'var(--ink-3)' })),
     }),
     obesvarad: () => ({
-      rubrik: 'Väntar posten på ett svar?',
+      rubrik: 'Är posten blockerad?',
       val: [
         { v: false, label: 'Nej — nästa steg är att bygga', farg: 'var(--ink-3)' },
-        { v: true, label: 'Ja — ' + OBESVARAD.label.toLowerCase(), farg: 'var(--serious)' },
+        { v: 'fraga', label: 'Ja — ' + OBESVARAD_LAGE.fraga.label.toLowerCase(), farg: OBESVARAD_LAGE.fraga.color },
+        { v: 'extern', label: 'Ja — ' + OBESVARAD_LAGE.extern.label.toLowerCase(), farg: OBESVARAD_LAGE.extern.color },
       ],
     }),
   };
 
-  const ppUrsprung = (falt) => (falt === 'obesvarad' ? !!aktiv[falt] : aktiv[falt]);
+  const ppUrsprung = (falt) => (falt === 'obesvarad' ? (obesvaradLage(aktiv) || false) : aktiv[falt]);
 
   /** Ändringarna i ord — samma meningar går in i prompten och i raden. */
   function ppAndringar() {
@@ -675,10 +717,14 @@
       lista.push(`byt område från "${aktiv.omr}" till "${utkast.omr}"`);
     if ('prio' in utkast)
       lista.push(`sätt prio till ${utkast.prio} (den var ${aktiv.prio || 'inte satt'})`);
-    if ('obesvarad' in utkast)
-      lista.push(utkast.obesvarad
-        ? `markera posten som ${OBESVARAD.label.toLowerCase()} — nästa steg är ett svar, inte kod`
-        : `ta bort flaggan ${OBESVARAD.label.toLowerCase()}, frågan är besvarad`);
+    if ('obesvarad' in utkast) {
+      const nyttLage = utkast.obesvarad;
+      lista.push(nyttLage
+        ? `markera posten som ${OBESVARAD_LAGE[nyttLage].label.toLowerCase()} — ${nyttLage === 'fraga'
+            ? 'nästa steg är ett svar, inte kod'
+            : 'nästa steg ligger hos någon utanför teamet, inte hos oss'}`
+        : `ta bort flaggan ${OBESVARAD_LAGE[obesvaradLage(aktiv)].label.toLowerCase()}`);
+    }
     return lista;
   }
 
@@ -718,7 +764,8 @@
 
   function ppRita() {
     const f = FAS[ppNu('fas')];
-    const obesvarad = !!ppNu('obesvarad');
+    const obesLage = ppNu('obesvarad'); // false | 'fraga' | 'extern'
+    const o = obesLage ? OBESVARAD_LAGE[obesLage] : null;
     const andrad = (falt) => (falt in utkast ? ' data-andrad' : '');
     postpanel.style.setProperty('--c', f.color);
 
@@ -726,9 +773,10 @@
       `<button type="button" class="bricka" data-valj="fas"${andrad('fas')} style="--c:${f.color}" ` +
         `title="Byt leverans"><span class="bprick"></span>${esc(f.label)}` +
         `<span class="karet" aria-hidden="true">▾</span></button>` +
-      `<button type="button" class="obesvarad${obesvarad ? '' : ' tom'}" data-valj="obesvarad"${andrad('obesvarad')} ` +
-        `title="${obesvarad ? 'Ta bort flaggan' : 'Markera som ' + esc(OBESVARAD.label.toLowerCase())}">` +
-        `${esc(OBESVARAD.label)}<span class="karet" aria-hidden="true">▾</span></button>`;
+      `<button type="button" class="obesvarad${o ? '' : ' tom'}${obesLage === 'extern' ? ' extern' : ''}" ` +
+        `data-valj="obesvarad"${andrad('obesvarad')} ` +
+        `title="${o ? 'Ta bort flaggan' : 'Markera posten som blockerad'}">` +
+        `${esc(o ? o.label : 'Blockerad?')}<span class="karet" aria-hidden="true">▾</span></button>`;
 
     // Rubriken och brödtexten visar utkastet och inte posten: skriver man om
     // dem i formuläret nedan ska panelen visa det man skickar, inte det som
@@ -736,9 +784,9 @@
     // raderat fält är inte en ändring.
     document.getElementById('pp-titel').textContent = ppNu('t');
 
-    document.getElementById('pp-flagga').innerHTML = obesvarad
-      ? `<div class="pp-flagga"><span class="tecken" aria-hidden="true">⚑</span><div>` +
-        `<b>${esc(OBESVARAD.desc)}</b> Den blockerar ${esc(f.label)}.</div></div>`
+    document.getElementById('pp-flagga').innerHTML = o
+      ? `<div class="pp-flagga${obesLage === 'extern' ? ' extern' : ''}"><span class="tecken" aria-hidden="true">⚑</span><div>` +
+        `<b>${esc(o.desc)}</b> Den blockerar ${esc(f.label)}.</div></div>`
       : '';
 
     // Brödtexten står inte kvar bredvid rutan som redigerar den — samma text
@@ -769,7 +817,7 @@
 
   function ppOppnaValjare(falt, ankare) {
     const { rubrik, val } = PP_FALT[falt]();
-    const aktuellt = falt === 'obesvarad' ? !!ppNu(falt) : ppNu(falt);
+    const aktuellt = ppNu(falt);
     valjare.dataset.falt = falt;
     valjare.innerHTML = `<span class="rubrik">${esc(rubrik)}</span>` + val.map(o =>
       `<button type="button" role="option" aria-checked="${o.v === aktuellt}" data-v="${esc(o.v)}" ` +
@@ -848,7 +896,9 @@
     const b = e.target.closest('button[data-v]');
     if (!b) return;
     const falt = valjare.dataset.falt;
-    const varde = falt === 'obesvarad' ? b.dataset.v === 'true' : b.dataset.v;
+    // «obesvarad» har ett falskt värde i valen (`false`), och det är det enda
+    // fältet där data-v-strängen inte redan är det riktiga värdet.
+    const varde = falt === 'obesvarad' && b.dataset.v === 'false' ? false : b.dataset.v;
     // Väljs ursprungsvärdet tillbaka finns ingen ändring kvar att skicka.
     if (varde === ppUrsprung(falt)) delete utkast[falt]; else utkast[falt] = varde;
     ppStangValjare();
