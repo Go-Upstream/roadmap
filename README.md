@@ -148,8 +148,7 @@ och går att kopiera rakt av.
    sidan byggs ur repot, så ett sparat värde hade skrivits över tyst vid nästa
    bygge. Det valda får en streckad ram, en rad säger vad som ändrats, och
    knappen byter till «Öppna session med ändringen», som öppnar
-   `K.prompt.uppdatera`. Samma mekanik som en flytt i Kanban, och samma skydd
-   mot att trycka fel.
+   `K.prompt.uppdatera` när man själv väljer att klicka den.
 
    **Pennan ✎ i alla tre vyerna öppnar samma panel**, med rubrik och
    beskrivning framme som textfält. Den låg förut som ett formulär inne i
@@ -161,9 +160,10 @@ och går att kopiera rakt av.
    **Snabbvalet ⊘ lägger posten åt sidan.** Det finns i alla tre vyerna och på
    varje post som inte redan ligger där, och det öppnar panelen med hinken
    omställd i utkastet — inte en session direkt. Ändringsraden är då redan
-   framme och «Ångra» ligger bredvid, vilket är samma skydd som Kanban-draget
-   har. Prompten ber sessionen fråga efter **skälet** och skriva in det:
-   hinken finns för det aktivt bortvalda, och utan skäl är den en skräphög.
+   framme och «Ångra» ligger bredvid, så ett felklick går att ta tillbaka
+   innan sessionen öppnas. Prompten ber sessionen fråga efter **skälet** och
+   skriva in det: hinken finns för det aktivt bortvalda, och utan skäl är den
+   en skräphög.
 
    Det snabbaste sättet att få den första versionen är att låta en session
    läsa projektets egna dokument och skriva filen. Räkna med att rätta den
@@ -295,9 +295,11 @@ inget att bygga om — säg det i stället för att publicera en oförändrad si
 - **Sidan är bred.** Tabellen har `min-width: 780px` i en ram som scrollar i
   sidled, så på en telefon syns rubrikkolumnen först. Därför startar en
   session både från rubriken och från åtgärdscellen.
-- **En flytt i Kanban ändrar ingenting.** Den öppnar en prompt som föreslår
-  ändringen i dokumentet posten kommer ur. Det gäller varje ändring i sidan,
-  snabbvalet ⊘ inräknat.
+- **En flytt i Kanban ändrar ingenting, men öppnar sessionen direkt vid
+  släppet** — utan ett extra klick, till skillnad från panelens ändringar
+  (snabbvalet ⊘ inräknat), som väntar på ett eget. Den öppnade fliken bär en
+  prompt som föreslår ändringen i dokumentet posten kommer ur; det är
+  sessionen som gör den, aldrig sidan.
 - **Prompten bär posten i klartext.** Motorn lägger den sist, under
   `--- Posten, ur roadmapen ---`. Konfigens texter kan därför handla om vad
   sessionen ska göra.
