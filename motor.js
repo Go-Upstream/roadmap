@@ -419,21 +419,25 @@
     el.innerHTML = `
       <p class="klapp">
         <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M5 9l-3 3 3 3M9 5l3-3 3 3M15 19l-3 3-3-3M19 9l3 3-3 3M2 12h20M12 2v20" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"></path></svg>
-        Dra ett kort till en annan kolumn för att flytta det — inget sparas tyst, du får en länk till en session som gör ändringen i dokumentet.
+        Dra ett kort till en annan kolumn för att flytta det — sidan sparar ingenting, men släppet öppnar direkt en session med en förifylld prompt som gör ändringen i dokumentet.
       </p>
       <div class="kbord">${spalter}</div>`;
   }
 
+  // Släppet öppnar sessionen direkt — till skillnad från panelens ändringar,
+  // som väntar på ett eget klick, eftersom ett kortdrag redan är en tydlig
+  // gest i sig. Banderollen är därför en kvittens och inte en fråga: den säger
+  // vad som öppnades, och «Stäng» tar bara bort den, den avbryter ingenting.
   function visaFlytt(it, till) {
+    window.open(flyttURL(it, till), '_blank', 'noopener');
     const panel = document.getElementById('panel-kanban');
     let banner = panel.querySelector('.kflytt');
     if (!banner) { banner = document.createElement('div'); banner.className = 'kflytt'; panel.prepend(banner); }
     const fran = grupp === 'omrade' ? it.omr : FAS[it.fas].label;
     const tillEtikett = grupp === 'omrade' ? till : FAS[till].label;
     banner.innerHTML =
-      `<span class="text">Flytta <b>${esc(it.t)}</b> från <b>${esc(fran)}</b> till <b>${esc(tillEtikett)}</b>?</span>` +
-      `<a class="oppna" href="${esc(flyttURL(it, till))}" target="_blank" rel="noopener">Öppna session ↗</a>` +
-      `<button class="avbryt" type="button">Avbryt</button>`;
+      `<span class="text">Öppnade en session som flyttar <b>${esc(it.t)}</b> från <b>${esc(fran)}</b> till <b>${esc(tillEtikett)}</b>.</span>` +
+      `<button class="avbryt" type="button">Stäng</button>`;
     banner.querySelector('.avbryt').onclick = () => banner.remove();
   }
 
