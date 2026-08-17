@@ -233,7 +233,9 @@ mark { background: var(--accent-botten); color: var(--ink); border-radius: 3px; 
 /* Brickan för en obesvarad post. --serious och inte --crit: en öppen fråga är
    inte ett fel, den är ett svar som fattas. Ihålig, till skillnad från
    fasbrickan som bär en fylld prick — de står bredvid varandra och ska gå att
-   skilja åt med formen, inte bara med kulören. */
+   skilja åt med formen, inte bara med kulören.
+   .extern byter till --warn: väntan är densamma, men vem som håller bollen
+   är inte, och de två lägena ska gå att skilja åt utan att läsa texten. */
 .obesvarad {
   display: inline-flex; align-items: center; flex-shrink: 0;
   font-family: var(--fakta); font-size: var(--grad-etikett);
@@ -242,7 +244,7 @@ mark { background: var(--accent-botten); color: var(--ink); border-radius: 3px; 
   border-radius: var(--radie-pill); padding: 3px 8px;
   white-space: nowrap;
 }
-.ruta.obesvarad-ruta { --c: var(--serious); }
+.obesvarad.extern { color: var(--warn); border-color: var(--warn); }
 /* Tabellcellen är den enda ytan där fasbrickan och flaggan står som två
    inline-element utan en flexrad omkring sig — kortets fot och kanbankortets
    meta har båda gap. Utan den här raden ligger de kant i kant. Måttet är
@@ -579,6 +581,14 @@ footer.fot .kallrad {
 }
 .pp-flagga .tecken { color: var(--serious); font-size: 15px; line-height: 1.35; flex-shrink: 0; }
 .pp-flagga b { color: var(--ink); font-weight: 600; }
+/* Väntar på extern part · samma form, varmare kulör. --warn i stället för
+   --serious: bollen ligger inte hos teamet, så tonen ska inte läsas som att
+   någon internt sitter på ett svar. */
+.pp-flagga.extern {
+  border-color: color-mix(in srgb, var(--warn) 40%, transparent);
+  background: color-mix(in srgb, var(--warn) 11%, transparent);
+}
+.pp-flagga.extern .tecken { color: var(--warn); }
 /* ── Rubriken och beskrivningen, redigerade i panelen ────────────────
    Förut låg de i ett formulär inne i kortet: tre rader att skriva en
    beskrivning i, i ett rutnät som hoppade när kortet växte — och bara i

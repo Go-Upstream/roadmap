@@ -103,6 +103,17 @@ kontroll("obesvarade går att filtrera på", sida.includes("obesvaradFilter"));
 kontroll("etiketten kommer ur konfigen", sida.includes("K.obesvarad"));
 kontroll("exemplets fråga bär flaggan", /obesvarad:\s*true/.test(sida));
 
+// Flaggans andra läge: väntar på extern part. `true` är kvar som ett alias
+// för «fraga» — det är vad varje befintlig post i alla tre konsumenterna
+// bär — så ett fel här skulle tysta flaggan för dem utan att röra deras data.
+kontroll("motorn skiljer på flaggans två lägen", sida.includes("function obesvaradLage"));
+kontroll("obesvarad: true betyder fortfarande «fraga»",
+  sida.includes("if (it.obesvarad === true || it.obesvarad === 'fraga') return 'fraga';"));
+kontroll("etiketten för externt-läget kommer ur konfigen", sida.includes("K.obesvaradExtern"));
+kontroll("exemplets extern-post bär det andra läget", /obesvarad:\s*'extern'/.test(sida));
+kontroll("väljaren erbjuder båda lägena",
+  sida.includes("v: 'fraga'") && sida.includes("v: 'extern'"));
+
 // Panelen bakom en rubrik. Den ersatte webbläsarens `title`-tooltip, som inte
 // finns på en telefon — så en regression här tar bort förklaringen helt för
 // den som läser i mobilen, utan att något ser trasigt ut på en dator.

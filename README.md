@@ -87,8 +87,9 @@ och går att kopiera rakt av.
      knappen inte alls.
    - `promptKontext` — sätt `false` för att stänga av faktablocket motorn
      annars lägger sist i varje prompt. Se `prompt` nedan.
-   - `obesvarad` — etiketten för flaggan nedan. Utelämnas den blir det
-     «Öppen fråga».
+   - `obesvarad`, `obesvaradExtern` — etiketterna för de två lägena av flaggan
+     nedan, `{ label, desc }` vardera. Utelämnas de blir det «Öppen fråga»
+     respektive «Väntar på extern part».
    - `omradeOrdning` — områdena i den ordning de ska stå. Ett område som
      saknas här hamnar sist, inte utanför.
    - `prioOrdning` — orden för prioritet och deras inbördes ordning.
@@ -119,11 +120,15 @@ och går att kopiera rakt av.
    `k` (källa — vilket dokument posten kommer ur). `fas` och `omr` måste finnas
    i konfigens listor.
 
-   **En post kan bära `obesvarad: true`.** Det är en post vars nästa steg är
-   ett svar och inte ett bygge — och den är **en flagga, inte en fas**, just
-   för att en fråga hör till den leverans den blockerar. Låg frågorna i en egen
-   hink gick det att se att de fanns, men inte vad de stod i vägen för. Brickan
-   ritas i alla tre vyerna och får en egen ruta i översikten att filtrera på.
+   **En post kan bära `obesvarad: true` eller `obesvarad: 'extern'`.** Det är
+   en post vars nästa steg inte är ett bygge — och den är **en flagga, inte en
+   fas**, just för att den hör till den leverans den blockerar. Låg den i en
+   egen hink gick det att se att den fanns, men inte vad den stod i vägen för.
+   Två lägen: `true` är nästa steg ett svar från någon i teamet (visas som
+   «Öppen fråga»), `'extern'` är nästa steg någon utanför det — en
+   leverantör, en myndighet, en kund (visas som «Väntar på extern part»).
+   Skillnaden är vem som håller bollen. Brickan ritas i alla tre vyerna och
+   varje läge får en egen ruta i översikten att filtrera på.
 
    **Beskrivningen tål `**fet**`, `*kursiv*` och `` `kod` ``** — de tre, och
    inga fler. Texten escapas först och taggarna skrivs efteråt, så en post kan
