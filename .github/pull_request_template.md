@@ -17,7 +17,7 @@ dem lokalt.
 ## Efter merge
 
 <!-- Pinnflytten sker av sig själv: en grön merge här öppnar en PR i varje
-     projekt i konsumenter.json inom minuter. Frågan är alltså inte om det
+     projekt i projekt.json inom minuter. Frågan är alltså inte om det
      brådskar, utan vad den som bygger om och publicerar behöver veta.
 
      Behöver något projekt ändra sin konfig för att fortsätta bygga? Byter

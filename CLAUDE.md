@@ -1,8 +1,8 @@
 # Roadmap-motorn
 
-Delad motor för Go-Upstreams roadmapsidor. Konsumenterna hämtar den som ett
+Delad motor för Go-Upstreams roadmapsidor. Projekten hämtar den som ett
 pinnat beroende — en tarball låst till en commit i respektive `package.json` —
-och vilka de är står i `konsumenter.json`, som är den enda listan.
+och vilka de är står i `projekt.json`, som är den enda listan.
 
 **Två mål, och båda gäller:** en förbättring görs *en gång* här, och *alla* kör
 den senaste motorn. Det andra är nytt. Pinnen är kvar för att bygget ska vara
@@ -14,7 +14,7 @@ i README.
 
 - **Allt landar via pull request på `main`.** Kontrollen `prov` (npm test +
   typkontroll) måste vara grön — ett fel här är ett fel hos alla tre
-  konsumenterna, och `prov.ts` säger vad varje kontroll skyddar mot.
+  projekten, och `prov.ts` säger vad varje kontroll skyddar mot.
 - **Öppna PR:en själv när arbetet är pushat**, utan att fråga och utan att
   erbjuda. Prenumerera på den med `mcp__github__subscribe_pr_activity` —
   aldrig tvillingen på `claude-code-remote`-servern, som gör samma sak men
@@ -27,9 +27,9 @@ i README.
   Go-Upstream-beslut 4 aug 2026, underlaget i ABkolls `docs/beslut.md`.)
 - **Auto-merge får användas brett här — men väg in att merge nu betyder
   pinnflytt nu.** En merge till `main` driftsätter fortfarande ingenting av
-  sig självt: pinnflyttens PR går in i konsumenten, men sidan de läser byter
+  sig självt: pinnflyttens PR går in i projektet, men sidan de läser byter
   först när någon bygger om och publicerar. Slå på auto-merge när PR:en är
-  grön — utom när ändringen bryter motorns kontrakt mot konsumenterna
+  grön — utom när ändringen bryter motorns kontrakt mot projekten
   (fältnamn i posterna, CSS-klasser temafilerna riktar sig mot, mallens
   platshållare). Den sortens PR lämnas åt ägaren; nu är skälet inte att nästa
   pinnflytt ärver överraskningen utan att den kommer inom minuter.
@@ -37,15 +37,21 @@ i README.
 - **En kontraktsändring bär `Pinnflytt: manuell`.** Raden skrivs sist i
   PR-beskrivningen — `main` squash-mergas, så det är den texten som blir
   commit-meddelandet pinnflytten läser — och gör att pinnflyttens PR:er öppnas
-  **utan auto-merge i alla konsumenter**, oavsett vad `automerge` säger i
-  `konsumenter.json`. Beslutet hör till ändringen och inte till projektet, och
+  **utan auto-merge i alla projekt**, oavsett vad `automerge` säger i
+  `projekt.json`. Beslutet hör till ändringen och inte till projektet, och
   det ska inte bero på att någon kommer ihåg att låta bli att trycka. Sätt den
   på samma PR:er som föregående punkt lämnar åt ägaren.
+
+  Trailern gäller **den commit som flytten bär**, och grenen
+  `roadmap/pinnflytt` återanvänds — därför slår pinnflytten bara på auto-merge
+  när PR:en *skapas*, aldrig när den uppdateras. Annars hade nästa
+  trailerlösa motorcommit tyst slagit på auto-merge på en PR som medvetet
+  hölls öppen.
 - **En «release» sker av sig själv.** `Pinnflytt` öppnar PR:en i varje
-  konsument; skriv inte hashar för hand. Bumpa `version` här vid
+  projekt; skriv inte hashar för hand. Bumpa `version` här vid
   beteendeändringar — numret är lässtöd och står i pinnflyttens PR-titel. Det
   finns inga npm-publiceringar och inga git-taggar.
-- **Ett nytt projekt läggs till i `konsumenter.json`**, annars når ingen
+- **Ett nytt projekt läggs till i `projekt.json`**, annars når ingen
   pinnflytt det. Ett projekt som tas bort ur listan slutar flyttas fram — det
   är den enda vägen ur, och den ska vara ett medvetet val.
 - **Publiceringen är kvar hos en människa.** Ett GitHub-jobb kan inte köra
@@ -57,11 +63,11 @@ i README.
 
 **Nyckeln pinnflytten behöver:** en fine-grained PAT med *Contents: read and
 write* och *Pull requests: read and write* på varje repo i
-`konsumenter.json`, lagd som hemligheten **`PINNFLYTT_TOKEN`** under
+`projekt.json`, lagd som hemligheten **`PINNFLYTT_TOKEN`** under
 *Settings → Secrets and variables → Actions*. **Resource owner ska vara
 `Go-Upstream`**, inte ett personkonto — en PAT med fel ägare når aldrig
 organisationens privata repon, hur rätt rättigheterna än är satt. Slå också på
-*Allow auto-merge* i varje konsumentrepo, annars står pinnflyttens PR öppen och
+*Allow auto-merge* i varje projektrepo, annars står pinnflyttens PR öppen och
 väntar på en tryckning.
 
 Steget *Pröva nyckeln* i `lista` gör tre saker innan något annat händer: det
@@ -71,7 +77,7 @@ organisationen om den kräver det), och det varnar när mindre än tre veckor
 återstår av dess livslängd. Kontrollen sitter där och inte i matrisen, så ett
 nyckelfel blir ett fel och inte tre identiska.
 
-Repot är publikt och konsumenterna privata. Därför har `pinnflytt.yml` ingen
+Repot är publikt och projekten privata. Därför har `pinnflytt.yml` ingen
 `pull_request`-utlösare: en gren från en fork skulle annars kunna nå nyckeln.
 `workflow_run` kör alltid med basrepots hemligheter, och bara `main` släpps
 igenom.

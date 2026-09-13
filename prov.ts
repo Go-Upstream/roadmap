@@ -105,7 +105,7 @@ kontroll("etiketten kommer ur konfigen", sida.includes("K.obesvarad"));
 kontroll("exemplets fråga bär flaggan", /obesvarad:\s*true/.test(sida));
 
 // Flaggans andra läge: väntar på extern part. `true` är kvar som ett alias
-// för «fraga» — det är vad varje befintlig post i alla tre konsumenterna
+// för «fraga» — det är vad varje befintlig post i alla tre projekten
 // bär — så ett fel här skulle tysta flaggan för dem utan att röra deras data.
 kontroll("motorn skiljer på flaggans två lägen", sida.includes("function obesvaradLage"));
 kontroll("obesvarad: true betyder fortfarande «fraga»",
@@ -242,7 +242,7 @@ kontroll("vippan slutar ljuga när systemet byter läge",
 
 // Motorstämpeln · vilken motor sidan byggdes med.
 //
-// Sidan publiceras för hand, så en pinnflytt som mergats i konsumenten behöver
+// Sidan publiceras för hand, så en pinnflytt som mergats i projektet behöver
 // inte betyda att läsarna sett den. Utan stämpeln fanns ingenstans att läsa av
 // om det steget blivit gjort — man fick öppna sidan och gissa på utseendet.
 const version = (JSON.parse(readFileSync(join(process.cwd(), "package.json"), "utf8")) as { version: string }).version;

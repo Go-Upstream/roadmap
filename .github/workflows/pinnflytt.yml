@@ -3,12 +3,12 @@ name: Pinnflytt
 # Målet är att alla projekt kör senaste motorn. Pinnen finns kvar — den ger
 # reproducerbara bygg — men den flyttas inte längre av någon som råkar komma
 # ihåg det. Varje grön merge till main öppnar en pinnflytt-PR i varje
-# konsument i konsumenter.json.
+# projekt i projekt.json.
 #
 # Kör efter `Prov` och inte parallellt med det: en pinne som flyttas till en
 # commit vars kontroller föll är precis det pinnen fanns för att förhindra.
 #
-# Repot är publikt och konsumenterna privata. Därför inget `pull_request`-
+# Repot är publikt och projekten privata. Därför inget `pull_request`-
 # utlösare här: en gren från en fork skulle annars kunna nå PINNFLYTT_TOKEN.
 # workflow_run kör alltid med basrepots hemligheter, och bara `main` släpps
 # igenom nedan.
@@ -32,7 +32,7 @@ jobs:
     if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success'
     runs-on: ubuntu-latest
     outputs:
-      konsumenter: ${{ steps.las.outputs.konsumenter }}
+      projekt: ${{ steps.las.outputs.projekt }}
       commit: ${{ steps.las.outputs.commit }}
       kort: ${{ steps.las.outputs.kort }}
       version: ${{ steps.las.outputs.version }}
@@ -43,7 +43,7 @@ jobs:
           # Den commit som faktiskt provades — inte «senaste på main», som
           # hinner bli en annan om två merger ligger tätt.
           ref: ${{ github.event.workflow_run.head_sha || github.sha }}
-      # Nyckeln prövas här, en gång, och inte en gång per konsument längre
+      # Nyckeln prövas här, en gång, och inte en gång per projekt längre
       # ner. En utgången PAT gav förut tre identiska «Bad credentials» ur
       # actions/checkout, med orsaken begravd i en logg — felet sa vad som
       # gick sönder men aldrig vad som var fel.
@@ -76,7 +76,7 @@ jobs:
         run: |
           set -euo pipefail
           sha="${{ github.event.workflow_run.head_sha || github.sha }}"
-          # En ändring som bryter motorns kontrakt mot konsumenterna ska nå
+          # En ändring som bryter motorns kontrakt mot projekten ska nå
           # dem som en PR att läsa, inte som en merge inom minuter. Trailern
           # `Pinnflytt: manuell` i commit-meddelandet stänger av auto-merge
           # för just den flytten. main squash-mergas, så det är squash-
@@ -88,7 +88,7 @@ jobs:
             manuell=nej
           fi
           {
-            echo "konsumenter=$(jq -c '.konsumenter' konsumenter.json)"
+            echo "projekt=$(jq -c '.projekt' projekt.json)"
             echo "commit=$sha"
             echo "kort=${sha:0:7}"
             echo "version=$(jq -r .version package.json)"
@@ -101,14 +101,14 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        k: ${{ fromJSON(needs.lista.outputs.konsumenter) }}
+        p: ${{ fromJSON(needs.lista.outputs.projekt) }}
     steps:
-      - name: Hämta konsumenten
+      - name: Hämta projektet
         uses: actions/checkout@v4
         with:
-          repository: ${{ matrix.k.repo }}
+          repository: ${{ matrix.p.repo }}
           token: ${{ secrets.PINNFLYTT_TOKEN }}
-          path: konsument
+          path: projekt
 
       - uses: actions/setup-node@v4
         with:
@@ -116,13 +116,13 @@ jobs:
 
       - name: Flytta pinnen
         id: pin
-        working-directory: konsument
+        working-directory: projekt
         # Värdena går genom env och aldrig in i skriptets text. Ett uttryck
         # som expanderas rakt in i bash är ett skript som bara går att prova
         # genom att köra det skarpt.
         env:
           COMMIT: ${{ needs.lista.outputs.commit }}
-          REPO: ${{ matrix.k.repo }}
+          REPO: ${{ matrix.p.repo }}
         run: |
           set -euo pipefail
           nu=$(jq -r '(.devDependencies["@go-upstream/roadmap"] // .dependencies["@go-upstream/roadmap"]) // ""' package.json)
@@ -167,21 +167,21 @@ jobs:
           } >> "$GITHUB_OUTPUT"
 
       # Motorn provas mot exempel/ i sitt eget repo, aldrig mot de tre
-      # riktiga konfigarna. En kontraktsändring upptäcktes därför först när
-      # någon körde bygget i konsumenten — alltså i det manuella sista steget,
+      # riktiga projektens konfigar. En kontraktsändring upptäcktes därför först när
+      # någon körde bygget i projektet — alltså i det manuella sista steget,
       # efter att den här PR:en redan mergats. Nu byggs sidan här, med den nya
       # motorn, innan PR:en finns. Går bygget inte igenom öppnas ingen PR.
-      - name: Bygg konsumentens sida med den nya motorn
+      - name: Bygg projektets roadmapsida med den nya motorn
         id: bygg
         if: steps.pin.outputs.gor == 'ja'
-        working-directory: konsument
+        working-directory: projekt
         env:
-          BYGG: ${{ matrix.k.bygg }}
-          REPO: ${{ matrix.k.repo }}
+          BYGG: ${{ matrix.p.bygg }}
+          REPO: ${{ matrix.p.repo }}
         run: |
           set -uo pipefail
           ok=ja
-          # Byggkommandot kommer ur konsumenter.json och går genom env, aldrig
+          # Byggkommandot kommer ur projekt.json och går genom env, aldrig
           # in i skriptets text — samma regel som för resten av värdena här.
           { npm ci --ignore-scripts --no-audit --no-fund && sh -c "$BYGG"; } \
             > /tmp/bygg.log 2>&1 || ok=nej
@@ -196,17 +196,17 @@ jobs:
 
       - name: Öppna eller uppdatera PR:en
         if: steps.pin.outputs.gor == 'ja'
-        working-directory: konsument
+        working-directory: projekt
         env:
           GH_TOKEN: ${{ secrets.PINNFLYTT_TOKEN }}
           COMMIT: ${{ needs.lista.outputs.commit }}
           KORT: ${{ needs.lista.outputs.kort }}
           VERSION: ${{ needs.lista.outputs.version }}
           FRAN: ${{ steps.pin.outputs.fran }}
-          REPO: ${{ matrix.k.repo }}
-          ARTEFAKT: ${{ matrix.k.artefakt }}
-          BYGG: ${{ matrix.k.bygg }}
-          AUTOMERGE: ${{ matrix.k.automerge }}
+          REPO: ${{ matrix.p.repo }}
+          ARTEFAKT: ${{ matrix.p.artefakt }}
+          BYGG: ${{ matrix.p.bygg }}
+          AUTOMERGE: ${{ matrix.p.automerge }}
           MANUELL: ${{ needs.lista.outputs.manuell }}
         run: |
           set -euo pipefail
@@ -281,18 +281,30 @@ jobs:
           } >> /tmp/kropp.md
 
           titel="Flytta roadmap-motorn till $KORT (v$VERSION)"
+          ny=nej
           if gh pr view "$gren" --repo "$REPO" >/dev/null 2>&1; then
             gh pr edit "$gren" --repo "$REPO" --title "$titel" --body-file /tmp/kropp.md
           else
             gh pr create --repo "$REPO" --base "$bas" --head "$gren" \
               --title "$titel" --body-file /tmp/kropp.md
+            ny=ja
           fi
 
           if [ "$MANUELL" = ja ]; then
-            # Trailern i motorcommiten väger tyngre än konsumentens automerge.
+            # Trailern i motorcommiten väger tyngre än projektets automerge.
             # En kontraktsändring ska läsas av någon innan den når tre projekt,
             # och det beslutet hör till ändringen — inte till projektet.
             echo "::notice::«Pinnflytt: manuell» — PR:en i $REPO lämnas öppen för granskning."
+          elif [ "$ny" != ja ]; then
+            # **Auto-merge slås bara på när PR:en skapas, aldrig när den
+            # uppdateras.** Grenen återanvänds, så en PR som hålls öppen för
+            # granskning — för att den bär en kontraktsändring — pekas om till
+            # nästa motorcommit av den här körningen. Bar den commiten ingen
+            # trailer skulle auto-merge annars slås på här, och ändringen som
+            # någon medvetet höll tillbaka gick in på köpet. Beslutet hör till
+            # den flytt som öppnade PR:en; en senare bump ska inte kunna
+            # eskalera det.
+            echo "::notice::PR:en fanns redan i $REPO — auto-merge lämnas som den är."
           elif [ "$AUTOMERGE" = "true" ]; then
             # Faller repot saknar auto-merge påslaget: PR:en står kvar öppen,
             # vilket är rätt utfall och inte ett fel i den här körningen.
