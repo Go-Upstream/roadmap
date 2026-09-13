@@ -281,12 +281,29 @@ jobs:
           } >> /tmp/kropp.md
 
           titel="Flytta roadmap-motorn till $KORT (v$VERSION)"
+
+          # Finns PR:en redan? Frågan ställs till `gh pr list` och inte till
+          # `gh pr view "$gren"`, vars utfall inte går att lita på: den föll
+          # med noll utskrift på en gren som hade en öppen PR, och då gick
+          # skriptet till create — som avbröt hela jobbet med «a pull request
+          # for branch … already exists». Grenen återanvänds med flit, så det
+          # här är den vanliga vägen och inte undantaget; att den aldrig
+          # utlösts förrän nu är bara för att ingen pinnflytt hunnit hinna
+          # ikapp en öppen PR tidigare.
+          #
+          # `pr list` svarar med data i stället för med ett utfall: numret på
+          # den öppna PR:en, eller tomt. Numret är dessutom entydigt att peka
+          # på i stegen efter, till skillnad från ett grennamn.
+          nr=$(gh pr list --repo "$REPO" --head "$gren" --state open \
+                 --json number -q '.[0].number // ""')
           ny=nej
-          if gh pr view "$gren" --repo "$REPO" >/dev/null 2>&1; then
-            gh pr edit "$gren" --repo "$REPO" --title "$titel" --body-file /tmp/kropp.md
+          if [ -n "$nr" ]; then
+            gh pr edit "$nr" --repo "$REPO" --title "$titel" --body-file /tmp/kropp.md
           else
             gh pr create --repo "$REPO" --base "$bas" --head "$gren" \
               --title "$titel" --body-file /tmp/kropp.md
+            nr=$(gh pr list --repo "$REPO" --head "$gren" --state open \
+                   --json number -q '.[0].number // ""')
             ny=ja
           fi
 
@@ -308,6 +325,9 @@ jobs:
           elif [ "$AUTOMERGE" = "true" ]; then
             # Faller repot saknar auto-merge påslaget: PR:en står kvar öppen,
             # vilket är rätt utfall och inte ett fel i den här körningen.
-            gh pr merge "$gren" --repo "$REPO" --squash --auto \
+            # Numret om det finns, annars grenen: uppslaget direkt efter
+            # `create` kan svara tomt innan GitHub hunnit ikapp sig själv, och
+            # ett tomt argument hade blivit ett annat fel än det som råder.
+            gh pr merge "${nr:-$gren}" --repo "$REPO" --squash --auto \
               || echo "::warning::Auto-merge gick inte att slå på för $REPO — PR:en står öppen."
           fi
