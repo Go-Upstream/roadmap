@@ -520,6 +520,13 @@ footer.fot {
 }
 footer.fot b { color: var(--ink); font-weight: 600; }
 footer.fot code, .kalla code { font-family: var(--fakta); font-weight: 500; font-size: var(--grad-etikett); }
+/* Vilken motor sidan byggdes med. Tyst, men läsbar — sidan publiceras för
+   hand, och det här är enda stället att se om en pinnflytt nått läsarna. */
+footer.fot .motorstampel {
+  margin: var(--rum-4) 0 0; font-family: var(--fakta); font-weight: 500;
+  font-size: var(--grad-etikett); letter-spacing: .05em;
+  color: var(--ink-3); opacity: .8;
+}
 footer.fot .kallrad {
   font-family: var(--fakta); font-weight: 500; font-size: var(--grad-etikett);
   letter-spacing: .03em; color: var(--ink-3); line-height: 1.8;

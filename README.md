@@ -40,7 +40,10 @@ Det som varje projekt äger själv, i en katalog i sitt eget repo:
 | `bygge.json` | Vilka filer bygget läser och vart det skriver |
 
 `exempel/` i det här repot är en komplett sådan katalog. Den är minsta möjliga
-och går att kopiera rakt av.
+och går att kopiera rakt av — inklusive `exempel/docs/`, dokumenten posternas
+`k` pekar på. De finns för att en post är en sammanfattning och `k` är dess
+enda väg tillbaka till det som äger uppgiften; ett exempel som pekade på filer
+som inte fanns visade inte det mönstret utan bara formen på det.
 
 ## Sätta upp en ny roadmap
 
@@ -212,11 +215,22 @@ och går att kopiera rakt av.
      "tema": "node_modules/@go-upstream/roadmap/tema-neutral.css",
      "marke": "roadmap/marke.svg",
      "typsnittCss": [],
-     "typsnittFiler": []
+     "typsnittFiler": [],
+     "kallkontroll": "varna"
    }
    ```
 
    `marke` är valfritt — utan det blir platsen i sidhuvudet tom.
+
+   `kallkontroll` styr vad som händer när en posts `k` pekar på en fil som
+   inte finns: `"varna"` (förvalet) skriver en rad, `"strikt"` stannar bygget,
+   `"av"` tiger. Bara värden som **ser ut som en sökväg** prövas — ingen
+   blanksteg och en ändelse — så en källa som «Styrgruppsmöte 2026-04-02» är
+   fullt giltig och anmäls inte. Gå igenom listan en gång och sätt sedan
+   `"strikt"`; då kan en trasig källa aldrig komma in igen. Förvalet är inte
+   strikt av samma skäl som allt annat här: motorn når tre projekt inom
+   minuter, och en ny kontroll som stannar deras bygge vore precis den sortens
+   överraskning pinnflytten är byggd för att undvika.
 
 7. **Lägg till skriptet** i `package.json`:
 
@@ -274,11 +288,34 @@ Arbetsgången, som ingen behöver driva:
    uppdaterar — en PR i varje projekt som skriver om hashen i `package.json`
    och `package-lock.json`. Grenen heter `roadmap/pinnflytt` och återanvänds,
    så två motorcommiter tätt inpå varandra ger en PR och inte två.
-3. Projektets egna kontroller kör. Är `automerge` sann i `konsumenter.json`
-   går PR:en in av sig själv när de är gröna.
+3. **Konsumentens sida byggs, med den nya motorn, innan PR:en öppnas.**
+   Arbetsflödet kör projektets eget byggkommando ur `konsumenter.json`. Går
+   det inte igenom öppnas ingen PR alls — förut upptäcktes en kontraktsändring
+   först när någon körde bygget för hand, alltså efter att PR:en redan
+   mergats. Utskriften följer med i PR-kroppen, så källkontrollens varningar
+   läses där någon faktiskt tittar.
+4. Projektets egna kontroller kör. Är `automerge` sann i `konsumenter.json`
+   går PR:en in av sig själv när de är gröna — **utom när motorcommiten bär
+   `Pinnflytt: manuell`**, se nedan.
 
 Ett projekt som inte hämtar `@go-upstream/roadmap` hoppas över med en rad i
 loggen, så en felaktig post i listan öppnar ingen PR.
+
+### `Pinnflytt: manuell`
+
+En ändring som rör motorns kontrakt mot projekten — fältnamn i posterna,
+CSS-klasser en temafil riktar sig mot, mallens platshållare — ska läsas av
+någon innan den når tre repon. Raden
+
+```
+Pinnflytt: manuell
+```
+
+sist i motor-PR:ens beskrivning gör att pinnflyttens PR:er öppnas **utan
+auto-merge i alla konsumenter**, oavsett vad `automerge` säger. `main`
+squash-mergas, så det är PR-beskrivningen som blir commit-meddelandet
+arbetsflödet läser. Beslutet hör till ändringen och inte till projektet — och
+det ska inte bero på att någon kommer ihåg att låta bli att trycka.
 
 **Det sista steget är fortfarande manuellt, och det är avsiktligt.** Sidan är
 en artefakt som publiceras med Artifact-verktyget, vilket ett GitHub-jobb inte
@@ -315,6 +352,14 @@ pekar namnet ut vilket, och det ska matcha en `repo`-post i
 inget att bygga om — säg det i stället för att publicera en oförändrad sida.
 
 ## Att veta
+
+- **Sidan säger vilken motor den byggdes med.** Sist i sidfoten, och som
+  `<meta name="roadmap-motor">` och `roadmap-commit` för den som hellre läser
+  källan. Det sista steget — bygga om och publicera — görs för hand, så en
+  pinnflytt som mergats i konsumenten betyder inte att läsarna sett den.
+  Stämpeln är enda stället att läsa av om det steget blivit gjort. **Tiden
+  stämplas inte**: låsfilen spikar pinnen just för att `npm ci` ska ge samma
+  sida i dag som i går, och provet bygger om och jämför byte för byte.
 
 - **Översikten är en rad, inte nio rutor.** Formen bär sorten: fylld prick är
   en leverans (hinkarna utesluter varandra), ihålig prick och streckad ram är
