@@ -327,6 +327,15 @@ squash-mergas, så det är PR-beskrivningen som blir commit-meddelandet
 arbetsflödet läser. Beslutet hör till ändringen och inte till projektet — och
 det ska inte bero på att någon kommer ihåg att låta bli att trycka.
 
+**Auto-merge slås bara på när PR:en skapas, aldrig när den uppdateras.**
+Grenen `roadmap/pinnflytt` återanvänds, så en PR som hålls öppen för
+granskning pekas om till nästa motorcommit av nästa körning. Bär *den*
+commiten ingen trailer skulle auto-merge annars slås på i det läget, och
+ändringen som någon medvetet höll tillbaka gick in på köpet. Beslutet hör till
+den flytt som öppnade PR:en; en senare bump kan inte eskalera det. Följden är
+att ett projekt vars `automerge` slås om från `false` till `true` får den
+ändringen först när den öppna PR:en stängts.
+
 **Det sista steget är fortfarande manuellt, och det är avsiktligt.** Sidan är
 en artefakt som publiceras med Artifact-verktyget, vilket ett GitHub-jobb inte
 kan göra. Pinnflyttens PR bär därför både byggkommandot och artefaktens url,

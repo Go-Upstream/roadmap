@@ -281,11 +281,13 @@ jobs:
           } >> /tmp/kropp.md
 
           titel="Flytta roadmap-motorn till $KORT (v$VERSION)"
+          ny=nej
           if gh pr view "$gren" --repo "$REPO" >/dev/null 2>&1; then
             gh pr edit "$gren" --repo "$REPO" --title "$titel" --body-file /tmp/kropp.md
           else
             gh pr create --repo "$REPO" --base "$bas" --head "$gren" \
               --title "$titel" --body-file /tmp/kropp.md
+            ny=ja
           fi
 
           if [ "$MANUELL" = ja ]; then
@@ -293,6 +295,16 @@ jobs:
             # En kontraktsändring ska läsas av någon innan den når tre projekt,
             # och det beslutet hör till ändringen — inte till projektet.
             echo "::notice::«Pinnflytt: manuell» — PR:en i $REPO lämnas öppen för granskning."
+          elif [ "$ny" != ja ]; then
+            # **Auto-merge slås bara på när PR:en skapas, aldrig när den
+            # uppdateras.** Grenen återanvänds, så en PR som hålls öppen för
+            # granskning — för att den bär en kontraktsändring — pekas om till
+            # nästa motorcommit av den här körningen. Bar den commiten ingen
+            # trailer skulle auto-merge annars slås på här, och ändringen som
+            # någon medvetet höll tillbaka gick in på köpet. Beslutet hör till
+            # den flytt som öppnade PR:en; en senare bump ska inte kunna
+            # eskalera det.
+            echo "::notice::PR:en fanns redan i $REPO — auto-merge lämnas som den är."
           elif [ "$AUTOMERGE" = "true" ]; then
             # Faller repot saknar auto-merge påslaget: PR:en står kvar öppen,
             # vilket är rätt utfall och inte ett fel i den här körningen.

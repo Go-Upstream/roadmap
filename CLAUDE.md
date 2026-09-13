@@ -41,6 +41,12 @@ i README.
   `projekt.json`. Beslutet hör till ändringen och inte till projektet, och
   det ska inte bero på att någon kommer ihåg att låta bli att trycka. Sätt den
   på samma PR:er som föregående punkt lämnar åt ägaren.
+
+  Trailern gäller **den commit som flytten bär**, och grenen
+  `roadmap/pinnflytt` återanvänds — därför slår pinnflytten bara på auto-merge
+  när PR:en *skapas*, aldrig när den uppdateras. Annars hade nästa
+  trailerlösa motorcommit tyst slagit på auto-merge på en PR som medvetet
+  hölls öppen.
 - **En «release» sker av sig själv.** `Pinnflytt` öppnar PR:en i varje
   projekt; skriv inte hashar för hand. Bumpa `version` här vid
   beteendeändringar — numret är lässtöd och står i pinnflyttens PR-titel. Det
