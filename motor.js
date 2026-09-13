@@ -46,7 +46,7 @@
    * flagga är satt.
    *
    * `obesvarad: true` är kvar som ett alias för `'fraga'` — den stavningen är
-   * vad varje post som redan finns bär, i alla tre konsumenterna, och den ska
+   * vad varje post som redan finns bär, i alla tre projekten, och den ska
    * fortsätta betyda samma sak efter den här ändringen.
    */
   function obesvaradLage(it) {

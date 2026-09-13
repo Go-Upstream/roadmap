@@ -134,7 +134,7 @@ function typsnittRegel(t: TypsnittFil): string {
  * Vilken motor sidan byggdes med — version och commit.
  *
  * **Den frågan gick förut inte att besvara.** Pinnflytten öppnar en PR i varje
- * konsument, men sidan läsarna ser byter först när någon bygger om och
+ * projekt, men sidan läsarna ser byter först när någon bygger om och
  * publicerar för hand. Utan en stämpel i sidan fanns det ingenstans att läsa
  * av om det steget blivit gjort — man fick öppna sidan och gissa på utseendet.
  *

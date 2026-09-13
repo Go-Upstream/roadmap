@@ -18,6 +18,16 @@ och sedan byggs sidan om.
 inte i ett projekt: en förbättring görs en gång, och varje projekt hämtar den
 när det självt vill.
 
+## Orden
+
+Tre ord återkommer, och de betyder olika saker:
+
+| Ord | Vad |
+|---|---|
+| **Motorn** | Det här repot. Vyerna, stilen, bygget — det som är lika för alla. |
+| **Ett projekt** | Ett repo som använder motorn för sin egen roadmap. ABkoll, drilla och Helny i dag; listan står i `projekt.json`. |
+| **Roadmapsidan** | Den byggda HTML-filen för ett projekt, publicerad som artefakt. Det är den läsarna öppnar. |
+
 ## Delarna
 
 Det som ligger i paketet, och som inte byts per projekt:
@@ -59,7 +69,7 @@ som inte fanns visade inte det mönstret utan bara formen på det.
 
    `tsx` behövs också, om projektet inte redan har det: `npm i -D tsx`.
 
-   Lägg sedan till projektet i `konsumenter.json` här, annars når ingen
+   Lägg sedan till projektet i `projekt.json` här, annars når ingen
    pinnflytt det.
 
 2. **Skapa katalogen.** `roadmap/` i projektets rot fungerar; namnet är fritt
@@ -284,17 +294,17 @@ som är borta är kravet att någon ska komma ihåg att flytta den.
 Arbetsgången, som ingen behöver driva:
 
 1. En PR mergas till `main` här och kontrollen `prov` blir grön.
-2. Arbetsflödet **Pinnflytt** går igenom `konsumenter.json` och öppnar — eller
+2. Arbetsflödet **Pinnflytt** går igenom `projekt.json` och öppnar — eller
    uppdaterar — en PR i varje projekt som skriver om hashen i `package.json`
    och `package-lock.json`. Grenen heter `roadmap/pinnflytt` och återanvänds,
    så två motorcommiter tätt inpå varandra ger en PR och inte två.
-3. **Konsumentens sida byggs, med den nya motorn, innan PR:en öppnas.**
-   Arbetsflödet kör projektets eget byggkommando ur `konsumenter.json`. Går
+3. **Projektets sida byggs, med den nya motorn, innan PR:en öppnas.**
+   Arbetsflödet kör projektets eget byggkommando ur `projekt.json`. Går
    det inte igenom öppnas ingen PR alls — förut upptäcktes en kontraktsändring
    först när någon körde bygget för hand, alltså efter att PR:en redan
    mergats. Utskriften följer med i PR-kroppen, så källkontrollens varningar
    läses där någon faktiskt tittar.
-4. Projektets egna kontroller kör. Är `automerge` sann i `konsumenter.json`
+4. Projektets egna kontroller kör. Är `automerge` sann i `projekt.json`
    går PR:en in av sig själv när de är gröna — **utom när motorcommiten bär
    `Pinnflytt: manuell`**, se nedan.
 
@@ -312,7 +322,7 @@ Pinnflytt: manuell
 ```
 
 sist i motor-PR:ens beskrivning gör att pinnflyttens PR:er öppnas **utan
-auto-merge i alla konsumenter**, oavsett vad `automerge` säger. `main`
+auto-merge i alla projekt**, oavsett vad `automerge` säger. `main`
 squash-mergas, så det är PR-beskrivningen som blir commit-meddelandet
 arbetsflödet läser. Beslutet hör till ändringen och inte till projektet — och
 det ska inte bero på att någon kommer ihåg att låta bli att trycka.
@@ -335,18 +345,18 @@ Helny` — ska
 1. klona eller uppdatera projektets repo,
 2. `npm install`, så att den pinnade motorn (eller en ny pinne, om en
    pinnflytts-PR redan mergats) hämtas,
-3. köra byggkommandot ur `konsumenter.json` — `npm run roadmap` för alla tre
+3. köra byggkommandot ur `projekt.json` — `npm run roadmap` för alla tre
    idag,
 4. verifiera den byggda sidan (öppna den, pröva snabbvalet, pennan och
    prompten — ett grönt bygge bevisar inte att sidan fungerar i webbläsaren),
 5. publicera med Artifact-verktyget och **`url=` projektets rad i
-   `konsumenter.json`** — aldrig utan, annars mister den delade länken sin
+   `projekt.json`** — aldrig utan, annars mister den delade länken sin
    koppling.
 
-Projektnamnet är valfritt när sessionen redan bara har ett konsumentrepo
+Projektnamnet är valfritt när sessionen redan bara har ett projektrepo
 öppet — bara **`Skapa roadmap`** räcker då. Med flera repo i sammanhanget
 pekar namnet ut vilket, och det ska matcha en `repo`-post i
-`konsumenter.json` (`ABkoll`, `drilla` eller `Helny` just nu).
+`projekt.json` (`ABkoll`, `drilla` eller `Helny` just nu).
 
 Är pinnen i `package.json` redan den senaste — inget att flytta, alltså
 inget att bygga om — säg det i stället för att publicera en oförändrad sida.
@@ -356,7 +366,7 @@ inget att bygga om — säg det i stället för att publicera en oförändrad si
 - **Sidan säger vilken motor den byggdes med.** Sist i sidfoten, och som
   `<meta name="roadmap-motor">` och `roadmap-commit` för den som hellre läser
   källan. Det sista steget — bygga om och publicera — görs för hand, så en
-  pinnflytt som mergats i konsumenten betyder inte att läsarna sett den.
+  pinnflytt som mergats i projektet betyder inte att läsarna sett den.
   Stämpeln är enda stället att läsa av om det steget blivit gjort. **Tiden
   stämplas inte**: låsfilen spikar pinnen just för att `npm ci` ska ge samma
   sida i dag som i går, och provet bygger om och jämför byte för byte.

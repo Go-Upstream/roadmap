@@ -18,7 +18,7 @@
     "Ett repo som saknar @go-upstream/roadmap i sin package.json hoppas över",
     "med en rad i loggen — en felaktig post här öppnar alltså ingen PR."
   ],
-  "konsumenter": [
+  "projekt": [
     {
       "repo": "Go-Upstream/ABkoll",
       "artefakt": "https://claude.ai/code/artifact/8adcf3b8-8d5d-4dd2-b19c-1a5a7092f4ce",
