@@ -1,9 +1,10 @@
 # Roadmap
 
 En läsvy av ett projekts roadmap och backlog: kort, tabell och Kanban över
-samma poster, med sök, filter, gruppering och sortering. Varje post har två
-åtgärder som öppnar `claude.ai/code` med en förifylld prompt — **Starta
-session** och **Ändra** — och ingen av dem skickas automatiskt.
+samma poster, med sök, filter på leverans, flagga och prio, gruppering och
+sortering. Varje post har två åtgärder som öppnar `claude.ai/code` med en
+förifylld prompt — **Starta session** och **Ändra** — och ingen av dem skickas
+automatiskt.
 
 Sidan är en enda HTML-fil utan externa hämtningar. Den publiceras som en
 artefakt och läses lika gärna i en telefon som på en skärm.
@@ -23,7 +24,7 @@ Det som ligger i paketet, och som inte byts per projekt:
 
 | Fil | Vad |
 |---|---|
-| `motor.js` | Vyerna, sök, filter, gruppering, sortering, kanban-drag |
+| `motor.js` | Vyerna, filterraden, sök, gruppering, sortering, kanban-drag |
 | `bas.css` | Layout och komponenter. Läser bara tokens |
 | `mall.html` | Skalet, med platshållare |
 | `tema-neutral.css` | Neutralt standardtema |
@@ -80,6 +81,14 @@ och går att kopiera rakt av.
      stå en hink för det som inte är placerat; «Obestämt» är ett bra namn,
      eftersom den då ställer en fråga i stället för att vara en skräphög.
      Varje fas pekar på en `--fas-*`-token i temat.
+
+     **Skillnaden mellan en leverans och ett tillstånd är inte ett eget fält —
+     den läses ur de här två listorna.** `levererat`, `uteslutet` och den hink
+     `skippa` pekar på är tillstånd; resten är leveranser. Leveranserna ligger
+     framme i filterraden och är det man prioriterar mellan; tillstånden ligger
+     bakom «Klart & bortvalt», och den **första leveransen är den «Nästa upp»
+     räknar på**. Ett projekt som lägger sin pågående leverans sist i
+     `fasOrdning` får alltså fel post i den knappen.
    - `skippa` — **snabbvalet i vyerna**, `{ ord, fas }`. `ord` är verbet på
      knappen och `fas` är hinken den lägger posten i; förvalet är
      `{ ord: 'Skippa', fas: 'uteslutet' }`, så fältet behövs bara för ett
@@ -92,7 +101,10 @@ och går att kopiera rakt av.
      respektive «Väntar på extern part».
    - `omradeOrdning` — områdena i den ordning de ska stå. Ett område som
      saknas här hamnar sist, inte utanför.
-   - `prioOrdning` — orden för prioritet och deras inbördes ordning.
+   - `prioOrdning` — orden för prioritet och deras inbördes ordning. De blir
+     också **knapparna i prio-filtret**, i den ordningen. Ett projekt utan
+     `prioOrdning` får ingen prio-kontroll alls i verktygsraden, i stället för
+     en tom.
    - `sidfot`, `kallor` — HTML. Bruksanvisningen för vyerna står i
      `mall.html` och behöver inte upprepas.
    - `prompt` — texterna. Det är den enda delen som är värd att lägga tid på.
@@ -128,7 +140,8 @@ och går att kopiera rakt av.
    «Öppen fråga»), `'extern'` är nästa steg någon utanför det — en
    leverantör, en myndighet, en kund (visas som «Väntar på extern part»).
    Skillnaden är vem som håller bollen. Brickan ritas i alla tre vyerna och
-   varje läge får en egen ruta i översikten att filtrera på.
+   varje läge får ett eget chip i filterraden att filtrera på — med ett tal som
+   räknar **inom** det man redan valt, så att en fråga syns där den blockerar.
 
    **Beskrivningen tål `**fet**`, `*kursiv*` och `` `kod` ``** — de tre, och
    inga fler. Texten escapas först och taggarna skrivs efteråt, så en post kan
@@ -174,6 +187,19 @@ och går att kopiera rakt av.
    den filen in i projektet och byt värdena. Temat måste sätta **varje** token
    `bas.css` läser — bygget kontrollerar det och stannar med en lista om något
    fattas.
+
+   **Ljust ligger i botten och mörkt kommer ur systemets läge.** Tre steg, i
+   den ordningen: läsarens val i vippan vinner alltid och sparas som
+   `data-theme`; annars gäller en `data-theme` som redan står på sidan
+   (artefaktvärden sätter en när läsaren valt tema där); annars temafilens
+   `@media (prefers-color-scheme: dark)`.
+
+   Kopierar du temafilen: ta med **alla fyra** blocken — `:root`, mediefrågan
+   och de två `[data-theme]`-blocken. Bygget kontrollerar bara att varje token
+   är satt *någonstans* i filen, så ett tema utan mediefråga bygger grönt och
+   ger den som kör mörkt system en ljus sida. Vill man ha ett tema som alltid
+   är mörkt oavsett system: sätt samma mörka värden i `:root` och i
+   mediefrågan.
 
 6. **Skriv `bygge.json`.** Sökvägar räknas från projektets rot.
 
@@ -290,8 +316,31 @@ inget att bygga om — säg det i stället för att publicera en oförändrad si
 
 ## Att veta
 
-- **Levererat är dolt som förval.** Det som är gjort ska inte konkurrera med
-  det som återstår. Det visas när man klickar fasrutan eller söker.
+- **Översikten är en rad, inte nio rutor.** Formen bär sorten: fylld prick är
+  en leverans (hinkarna utesluter varandra), ihålig prick och streckad ram är
+  en flagga (den filtrerar på tvären), tyst är det avslutade. Raden bryter
+  aldrig — ryms den inte scrollar den i sidled, som tabellen, eftersom en
+  radbrytning som hamnar mitt i en sort säger något falskt om vad sakerna är.
+
+- **Klart och bortvalt är dolt som förval.** Det som är gjort eller aktivt
+  bortvalt ska inte konkurrera med det som återstår. Det fälls ut längst till
+  höger i raden, och en sökning tar fram det ändå. I Kanban står hinken
+  snabbvalet pekar på kvar som kolumn även när den är dold — annars gick det
+  inte längre att dra ett kort dit.
+
+- **«Nästa upp» är en lins och inte ett filter.** Den pågående leveransen,
+  minus det som väntar på svar, sorterat på prio — och den ersätter de andra
+  valen i stället för att läggas ovanpå dem, så att den aldrig ger ett tomt
+  urval ingen begärde. Filterraden under säger alltid i klartext vad som
+  gäller, linsen inräknad.
+
+- **Flaggornas tal räknas inom det valda.** Att fyra av fem öppna frågor ligger
+  i den leverans som pågår är det som gör talet användbart; «5 totalt» sa bara
+  att de fanns.
+
+- **Filtren sparas inte mellan besök.** Vy, gruppering och sortering sparas i
+  `localStorage`; hink, flagga, prio och linsen gör det inte. En sida som öppnas
+  med ett dolt filter påslaget visar för få poster utan att säga varför.
 - **Sidan är bred.** Tabellen har `min-width: 780px` i en ram som scrollar i
   sidled, så på en telefon syns rubrikkolumnen först. Därför startar en
   session både från rubriken och från åtgärdscellen.

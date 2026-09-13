@@ -22,14 +22,16 @@
       </div>
     </div>
     <div class="vippa" role="group" aria-label="Mörkt eller ljust läge">
-      <button type="button" id="tema-mork" aria-pressed="true">Mörkt</button>
-      <button type="button" id="tema-ljus" aria-pressed="false">Ljust</button>
+      <button type="button" id="tema-mork" aria-pressed="false">Mörkt</button>
+      <button type="button" id="tema-ljus" aria-pressed="true">Ljust</button>
     </div>
   </div>
 </header>
 
 <div class="spalt">
-  <section class="oversikt" id="oversikt" aria-label="Faserna — klicka en ruta för att filtrera"></section>
+  <section class="oversikt" aria-label="Filter — leveranser, flaggor och det avslutade">
+    <div class="oversikt-rad" id="oversikt"></div>
+  </section>
   <p class="filterrad" id="filterrad" hidden></p>
 
   <div class="verktyg">
@@ -45,10 +47,19 @@
       <button class="rensa" id="rensa" type="button" aria-label="Rensa sökningen" title="Rensa sökningen (Esc)" hidden>×</button>
     </div>
     <div class="verktyg-hoger">
-      <span class="grupp-etikett">Gruppera</span>
-      <div class="segment" role="group" aria-label="Gruppera efter">
-        <button type="button" id="grupp-tid" aria-pressed="true">Tid</button>
-        <button type="button" id="grupp-omrade" aria-pressed="false">Område</button>
+      <!-- Prio · det som saknades för att kunna prioritera. Motorn fyller
+           segmentet ur K.prioOrdning och döljer blocket för ett projekt som
+           inte har några prioord. -->
+      <div class="filterblock" id="prio-blk" hidden>
+        <span class="grupp-etikett">Prio</span>
+        <div class="segment" role="group" aria-label="Filtrera på prioritet" id="prio-filter"></div>
+      </div>
+      <div class="filterblock">
+        <span class="grupp-etikett">Gruppera</span>
+        <div class="segment" role="group" aria-label="Gruppera efter">
+          <button type="button" id="grupp-tid" aria-pressed="true">Tid</button>
+          <button type="button" id="grupp-omrade" aria-pressed="false">Område</button>
+        </div>
       </div>
       <div class="segment" role="tablist" aria-label="Visningsläge">
         <button class="ikon" id="vy-kort" role="tab" aria-selected="true" aria-controls="panel-kort" aria-label="Kortvy" title="Kortvy">
@@ -86,9 +97,11 @@
     <!-- Bruksanvisningen hör till motorn, inte till projektet, och står därför
          här och inte i konfigen. -->
     <p style="margin:0">
-      <b>Gruppera</b> (Tid/Område) styr indelningen i alla tre vyerna — i Kanban blir det kolumndimensionen.
-      Klicka en fasruta för att filtrera. <b>Levererat är dolt som förval</b> och visas när du klickar rutan eller söker.
-      Tabellen sorteras genom att klicka en kolumnrubrik.
+      <b>Filterraden</b> överst: fylld prick är en leverans (de utesluter varandra), streckad ram är en flagga
+      (den filtrerar på tvären och räknar inom det du valt). <b>«Nästa upp»</b> ger den pågående leveransen utan
+      det som väntar på svar, sorterat på prio. <b>Klart och bortvalt är dolt som förval</b> och fälls ut längst till höger.
+      <b>Prio</b> och <b>Gruppera</b> (Tid/Område) styr urval och indelning i alla tre vyerna — i Kanban blir grupperingen
+      kolumndimensionen. Tabellen sorteras genom att klicka en kolumnrubrik.
     </p>
     <p style="margin:0">
       <b>Rubriken öppnar posten</b> — där står vad hinken och prio betyder, och där ändras postens sex fält.
