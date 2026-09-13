@@ -184,6 +184,61 @@ for (const [vad, monster] of [
 // samma fråga — ett avhugget och ett helt.
 kontroll("radens och kanbankortets tooltip är borta", !sida.includes("utanMd"));
 
+// Översikten · en rad och inte nio rutor. Rutorna var ett inventarium som tog
+// två rader innan en enda post syntes, och ritade tre olika beteenden —
+// nollställning, hink, flagga — som samma ruta. Raden bär sorten i formen.
+kontroll("motorn ritar filterraden", sida.includes("function chipHTML"));
+kontroll("de gamla rutorna är borta", !sida.includes('class="ruta'));
+kontroll("skalet bär raden", sida.includes('<div class="oversikt-rad" id="oversikt">'));
+kontroll("raden bryter aldrig", sida.includes("min-width: max-content"));
+
+// Leverans och tillstånd skiljs åt utan ett nytt konfigfält: levererat och
+// uteslutet är tillstånd, resten leveranser, och den första är den som pågår.
+// Ett projekt som döpt om den bortvalda hinken pekar om den med K.skippa.fas.
+kontroll("faserna delas i leveranser och tillstånd", sida.includes("const ARKIV_FASER"));
+kontroll("den bortvalda hinken räknas som ett tillstånd",
+  sida.includes("k === 'levererat' || k === 'uteslutet' || k === SKIPPA.fas"));
+kontroll("den pågående leveransen är den första", sida.includes("const PAGAENDE = LEVERANSER[0]"));
+kontroll("det avslutade är dolt som förval", sida.includes("visaArkiv || !arArkiv(i.fas)"));
+// Blir hinken dold försvinner släppytan med den, och då går det inte längre
+// att dra ett kort till «Skippat» i Kanban. Kolumnen står därför alltid kvar.
+kontroll("kanban behåller snabbvalets kolumn som släppyta",
+  sida.includes("!arArkiv(k) || k === SKIPPA.fas || items.some(i => i.fas === k)"));
+
+// Prio · axeln man prioriterar längs, som förut bara gick att sortera på i
+// tabellen och aldrig att välja på. Orden kommer ur konfigen, aldrig ur motorn.
+kontroll("prio går att filtrera på", sida.includes("prioFilter"));
+kontroll("prioorden kommer ur konfigen", sida.includes("Object.keys(PRIO_ORDNING || {})"));
+kontroll("skalet bär prio-segmentet", sida.includes('id="prio-filter"'));
+kontroll("ett projekt utan prioordning får ingen kontroll", sida.includes("if (!PRIO_ORD.length)"));
+
+// «Nästa upp» · en lins, inte ett filter. Den ersätter de andra valen i
+// stället för att läggas ovanpå dem, och säger alltid vad den gör.
+kontroll("motorn har linsen", sida.includes("let linsen = false"));
+kontroll("linsen tar den pågående leveransen utan det blockerade",
+  sida.includes("i.fas === PAGAENDE && !obesvaradLage(i)"));
+kontroll("linsen förklarar sig på filterraden", sida.includes("<b>Nästa upp</b> —"));
+
+// Flaggorna räknas inom det valda. «5 totalt» sa bara att frågorna fanns;
+// att fyra av dem ligger i den leverans som pågår är det som gör talet värt
+// något.
+kontroll("flaggorna räknas inom urvalet", sida.includes("n: inom.filter(i => obesvaradLage(i) === lage).length"));
+
+// Temat · ljust i botten, mörkt ur systemets läge, läsarens val överst.
+// Förut stämplade motorn alltid data-theme, och den stämpeln slog ut
+// temafilens mediefråga — «annars telefonens läge» var alltså aldrig sant.
+kontroll("temafilens botten är ljus", /:root \{\s*\n\s*color-scheme: light;/.test(sida));
+kontroll("mörkt kommer ur systemets läge",
+  sida.includes("@media (prefers-color-scheme: dark)") &&
+  sida.includes(':root:not([data-theme="light"])'));
+kontroll("vippan vinner åt båda hållen",
+  sida.includes(':root[data-theme="light"]') && sida.includes(':root[data-theme="dark"]'));
+kontroll("inget val stämplar ingenting", sida.includes("function speglaSystemet"));
+kontroll("värdens egen stämpel skrivs inte över",
+  sida.includes("const stampel = document.documentElement.dataset.theme;"));
+kontroll("vippan slutar ljuga när systemet byter läge",
+  sida.includes("morkMedia.addEventListener('change'"));
+
 // Ingenting hämtas utifrån. Tre former, eftersom de blockeras var för sig.
 const externa: string[] = [];
 for (const [monster, vad] of [

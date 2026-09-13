@@ -71,6 +71,30 @@
   const SKIPPA = Object.assign({ fas: 'uteslutet', ord: 'Skippa' }, K.skippa || {});
   const kanSkippa = (it) => !!FAS[SKIPPA.fas] && it.fas !== SKIPPA.fas;
 
+  /**
+   * Faserna delade i två sorter: **leveranser och tillstånd**.
+   *
+   * Konfigen säger det redan, utan att ha ett fält för det: `levererat` och
+   * `uteslutet` är tillstånd, resten är leveranser, och den första leveransen
+   * är per definition den som pågår. Ett projekt som döpt om den bortvalda
+   * hinken pekar om den med `K.skippa.fas`, så den räknas hit också.
+   *
+   * Delningen finns för att de två sorterna ska kunna behandlas olika i
+   * översikten: leveranserna är det man prioriterar mellan och ligger framme,
+   * tillstånden är det avslutade och ligger bakom en fällning.
+   */
+  const ARKIV_FASER = FAS_ORDNING.filter(
+    k => k === 'levererat' || k === 'uteslutet' || k === SKIPPA.fas);
+  const LEVERANSER = FAS_ORDNING.filter(k => !ARKIV_FASER.includes(k));
+  /** Den pågående leveransen: den första som inte är ett tillstånd. */
+  const PAGAENDE = LEVERANSER[0] || null;
+  const arArkiv = (fas) => ARKIV_FASER.includes(fas);
+
+  /** Prioritetsorden i konfigens egen ordning — motorn hittar inte på några. */
+  const PRIO_ORD = Object.keys(PRIO_ORDNING || {})
+    .sort((a, b) => PRIO_ORDNING[a] - PRIO_ORDNING[b]);
+  const prioRang = (it) => PRIO_ORDNING[it.prio] ?? 99;
+
   const esc = (s) => String(s).replace(/[&<>"]/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;' }[c]));
 
   // Escapa och markera sökträffar — skiftlägesokänsligt, alla förekomster.
@@ -155,6 +179,20 @@
   // ── Läge ────────────────────────────────────────────────────────
   let fasFilter = null;
   let obesvaradFilter = null; // null | 'fraga' | 'extern'
+  let prioFilter = null; // null | ett ord ur K.prioOrdning
+  let visaArkiv = false; // «Klart & bortvalt» utfällt
+  /**
+   * «Nästa upp» — en lins och inte ett filter.
+   *
+   * Den pågående leveransen, minus det som väntar på svar, sorterat på prio.
+   * Det är frågan man öppnar sidan för, och den gick förut inte att ställa
+   * alls: prio fanns bara att sortera på i tabellen, aldrig att välja på.
+   *
+   * Linsen ersätter de andra filtren i stället för att läggas ovanpå dem —
+   * annars blir «Nästa upp» plus en vald fas ett tomt urval som ingen
+   * begärde. Den säger alltid själv vad den gör, på filterraden under.
+   */
+  let linsen = false;
   let fraga = '';        // normaliserad sökning
   let fragaRa = '';      // som skriven, för visning
   let vy = 'kort';       // 'kort' | 'tabell' | 'kanban'
@@ -189,11 +227,26 @@
       (lage ? ' ' + OBESVARAD_LAGE[lage].label : '')).toLowerCase().includes(fraga);
   };
 
-  // Levererat är dolt som förval — det som är gjort ska inte konkurrera med det som återstår.
-  const synliga = () => (fasFilter ? ITEMS.filter(i => i.fas === fasFilter)
-    : ITEMS.filter(i => fraga || i.fas !== 'levererat'))
-    .filter(i => !obesvaradFilter || obesvaradLage(i) === obesvaradFilter)
-    .filter(traffar);
+  /**
+   * Urvalet, i den ordning filtren är tänkta att läsas.
+   *
+   * **Det avslutade är dolt som förval** — levererat och bortvalt ska inte
+   * konkurrera med det som återstår. En sökning, en vald hink eller en utfälld
+   * «Klart & bortvalt» tar fram det igen.
+   */
+  const synliga = () => {
+    if (linsen) {
+      return ITEMS
+        .filter(i => i.fas === PAGAENDE && !obesvaradLage(i))
+        .filter(traffar)
+        .sort((a, b) => (prioRang(a) - prioRang(b)) || a.t.localeCompare(b.t, 'sv'));
+    }
+    return (fasFilter ? ITEMS.filter(i => i.fas === fasFilter)
+      : ITEMS.filter(i => fraga || visaArkiv || !arArkiv(i.fas)))
+      .filter(i => !obesvaradFilter || obesvaradLage(i) === obesvaradFilter)
+      .filter(i => !prioFilter || i.prio === prioFilter)
+      .filter(traffar);
+  };
 
   /** Brickan som säger att posten är obesvarad. Tom sträng när den inte är det. */
   function obesvaradHTML(it) {
@@ -304,59 +357,176 @@
       </div>`;
   }
 
+  /**
+   * Ett chip i filterraden. `c` är färgen, `ring` ritar en ihålig prick.
+   *
+   * Formen bär sorten, och det är hela poängen med den: **fylld prick =
+   * leverans** (hinkarna utesluter varandra), **ihålig prick och streckad ram
+   * = flagga** (filtrerar på tvären), **tyst = det avslutade**. Nio likadana
+   * rutor kunde inte säga det, och man fick prova sig fram till vilken sort
+   * man klickat på.
+   */
+  function chipHTML(o) {
+    const prick = o.ring
+      ? '<span class="ring" aria-hidden="true"></span>'
+      : (o.c ? `<span class="prick" style="background:${o.c}" aria-hidden="true"></span>` : '');
+    return `<button type="button" class="fchip${o.klass ? ' ' + o.klass : ''}" ` +
+      `data-chip="${esc(o.k)}" aria-pressed="${!!o.pa}"` +
+      (o.c ? ` style="--c:${o.c}"` : '') +
+      (o.titel ? ` title="${esc(o.titel)}"` : '') + '>' +
+      prick + esc(o.label) +
+      (o.n === undefined ? '' : ` <span class="n">${o.n}</span>`) + '</button>';
+  }
+
+  /**
+   * Översikten: **en rad, inte nio rutor**.
+   *
+   * Rutorna var ett inventarium — de svarade på «hur många ligger var», och
+   * tog två rader och ett par hundra pixlar på att göra det, innan en enda
+   * post syntes. Raden svarar på samma fråga i förbigående och lämnar plats åt
+   * den fråga man faktiskt kom med: vad tar jag härnäst.
+   *
+   * Ryms raden inte i bredden scrollar den i sidled, som tabellen — den bryter
+   * aldrig, eftersom en radbrytning som hamnar mitt i en sort säger något
+   * falskt om vad sakerna är.
+   */
   function ritaOversikt() {
     const ov = document.getElementById('oversikt');
-    let html = `<button class="ruta allt" data-fas="" aria-pressed="${fasFilter === null}" title="Visa allt — rensar filtret">` +
-      `<div class="tal">${ITEMS.length}</div><div class="etikett"><span class="prick"></span>Poster totalt</div></button>`;
-    FAS_ORDNING.forEach(k => {
+    let html = '';
+
+    // Linsen först: den är inte ett filter bland de andra, och står därför
+    // före avdelaren och ser annorlunda ut.
+    if (PAGAENDE) {
+      html += `<button type="button" class="lins" id="lins" aria-pressed="${linsen}" ` +
+        `title="${esc(FAS[PAGAENDE].label)} — utan det som väntar på svar, sorterat på prio">` +
+        'Nästa upp</button><span class="avdelare" aria-hidden="true"></span>';
+    }
+
+    const inget = !fasFilter && !obesvaradFilter && !prioFilter && !linsen;
+    html += chipHTML({ k: '', label: 'Alla', n: ITEMS.length, pa: inget, klass: 'allt',
+      titel: 'Visa allt — rensar filtren' });
+
+    LEVERANSER.forEach(k => {
       const n = ITEMS.filter(i => i.fas === k).length;
       if (!n) return;
-      const av = (k === 'levererat' && !fraga && fasFilter !== k) ? ' av' : '';
-      html += `<button class="ruta${av}" data-fas="${k}" aria-pressed="${fasFilter === k}" style="--c:${FAS[k].color}" ` +
-        `title="${esc(FAS[k].desc)} Klicka för att visa bara ${FAS[k].label.toLowerCase()}.">` +
-        `<div class="tal">${n}</div><div class="etikett"><span class="prick"></span>${FAS[k].label}</div></button>`;
+      html += chipHTML({ k: 'fas:' + k, label: FAS[k].label, n: n, c: FAS[k].color,
+        pa: fasFilter === k && !linsen,
+        titel: `${FAS[k].desc} Klicka för att visa bara ${FAS[k].label.toLowerCase()}.` });
     });
-    // Obesvarade får en egen ruta per läge, sist och bara om det finns några
-    // av det läget. De filtrerar på tvären mot faserna — en fråga har både en
-    // leverans och ett av de här tillstånden, så rutorna utesluter inte
-    // varandra.
+
+    // Flaggorna filtrerar på tvären mot hinkarna — en fråga har både en
+    // leverans och ett av de här tillstånden — så de utesluter inte varandra,
+    // och de räknas **inom det valda**. Att fyra av fem öppna frågor ligger i
+    // den leverans som pågår är det som gör talet användbart; «5 totalt» sa
+    // bara att de fanns.
+    const inom = fasFilter ? ITEMS.filter(i => i.fas === fasFilter)
+      : ITEMS.filter(i => visaArkiv || !arArkiv(i.fas));
+    let avdelad = false;
     for (const lage of ['fraga', 'extern']) {
-      const n = ITEMS.filter(i => obesvaradLage(i) === lage).length;
-      if (!n) continue;
+      if (!ITEMS.some(i => obesvaradLage(i) === lage)) continue;
       const o = OBESVARAD_LAGE[lage];
-      const av = obesvaradFilter === lage ? '' : ' av';
-      html += `<button class="ruta obesvarad-ruta${av}" data-obesvarad="${lage}" ` +
-        `aria-pressed="${obesvaradFilter === lage}" style="--c:${o.color}" ` +
-        `title="${esc(o.desc)} Klicka för att visa bara dem.">` +
-        `<div class="tal">${n}</div><div class="etikett"><span class="prick"></span>${esc(o.label)}</div></button>`;
+      if (!avdelad) { html += '<span class="avdelare" aria-hidden="true"></span>'; avdelad = true; }
+      html += chipHTML({ k: 'flagga:' + lage, label: o.label,
+        n: inom.filter(i => obesvaradLage(i) === lage).length,
+        c: o.color, ring: true, klass: 'flagga',
+        pa: obesvaradFilter === lage && !linsen,
+        titel: `${o.desc} Talet räknar inom det valda urvalet.` });
+    }
+
+    // Det avslutade sist, bakom en fällning: tillstånd, inte leveranser.
+    const arkiv = ARKIV_FASER.filter(k => ITEMS.some(i => i.fas === k));
+    if (arkiv.length) {
+      html += '<span class="avdelare" aria-hidden="true"></span>';
+      if (visaArkiv) {
+        arkiv.forEach(k => {
+          html += chipHTML({ k: 'fas:' + k, label: FAS[k].label,
+            n: ITEMS.filter(i => i.fas === k).length, c: FAS[k].color,
+            pa: fasFilter === k && !linsen, titel: FAS[k].desc });
+        });
+        html += chipHTML({ k: 'arkiv', label: 'Dölj', klass: 'tyst', titel: 'Fäll ihop det avslutade igen' });
+      } else {
+        const n = ITEMS.filter(i => arArkiv(i.fas)).length;
+        html += chipHTML({ k: 'arkiv', label: `Klart & bortvalt ${n} ▾`, klass: 'tyst',
+          titel: 'Det avslutade är dolt som förval — klicka för att ta fram det' });
+      }
     }
 
     ov.innerHTML = html;
-    ov.querySelectorAll('.ruta').forEach(btn => btn.addEventListener('click', () => {
-      if (btn.dataset.obesvarad) {
-        const lage = btn.dataset.obesvarad;
+    const lins = document.getElementById('lins');
+    if (lins) lins.addEventListener('click', () => {
+      linsen = !linsen;
+      if (linsen) { fasFilter = null; obesvaradFilter = null; prioFilter = null; visaArkiv = false; }
+      ritaAllt();
+    });
+    ov.querySelectorAll('.fchip').forEach(btn => btn.addEventListener('click', () => {
+      const k = btn.dataset.chip;
+      linsen = false;
+      if (k === 'arkiv') {
+        visaArkiv = !visaArkiv;
+        if (!visaArkiv && arArkiv(fasFilter)) fasFilter = null;
+      } else if (k.startsWith('flagga:')) {
+        const lage = k.slice(7);
         obesvaradFilter = obesvaradFilter === lage ? null : lage;
+      } else if (k === '') {
+        fasFilter = null; obesvaradFilter = null; prioFilter = null;   // «Alla» rensar allt
       } else {
-        const k = btn.dataset.fas || null;
-        fasFilter = (k === fasFilter) ? null : k;
-        if (!k) obesvaradFilter = null;   // «Poster totalt» rensar allt
+        const fas = k.slice(4);
+        fasFilter = fasFilter === fas ? null : fas;
       }
       ritaAllt();
     }));
   }
 
+  /**
+   * Prio-filtret · det som saknades för att kunna prioritera.
+   *
+   * Posterna har burit `prio` hela tiden och tabellen har kunnat sortera på
+   * den, men det gick inte att **välja** på den någonstans — alltså fanns den
+   * axel man prioriterar längs inte i vyerna. Orden och deras ordning kommer
+   * ur `K.prioOrdning`; motorn hittar inte på några egna, och ett projekt utan
+   * prioOrdning får ingen kontroll alls i stället för en tom.
+   */
+  function ritaPrioFilter() {
+    const blk = document.getElementById('prio-blk');
+    const seg = document.getElementById('prio-filter');
+    if (!blk || !seg) return;
+    if (!PRIO_ORD.length) { blk.hidden = true; return; }
+    blk.hidden = false;
+    seg.innerHTML = [''].concat(PRIO_ORD).map(p =>
+      `<button type="button" data-prio="${esc(p)}" aria-pressed="${(prioFilter || '') === p && !linsen}">` +
+      `${p === '' ? 'Alla' : esc(p)}</button>`).join('');
+    seg.querySelectorAll('button').forEach(b => b.addEventListener('click', () => {
+      linsen = false;
+      prioFilter = b.dataset.prio || null;
+      ritaAllt();
+    }));
+  }
+
+  /** Filterraden i ord — varje urval förklarar sig självt, linsen först. */
   function ritaFilterrad() {
     const el = document.getElementById('filterrad');
+    if (linsen) {
+      const blockerade = ITEMS.filter(i => i.fas === PAGAENDE && obesvaradLage(i)).length;
+      el.hidden = false;
+      el.innerHTML = `<b>Nästa upp</b> — ${esc(FAS[PAGAENDE].label)}, utan det som väntar på svar, ` +
+        `sorterat på prio.` +
+        (blockerade ? ` ${blockerade} blockerade ${blockerade === 1 ? 'post är' : 'poster är'} undantagna.` : '') +
+        ` Klicka «Nästa upp» igen, eller «Alla», för att rensa.`;
+      return;
+    }
     const delar = [];
     if (fasFilter) delar.push(`<b>${FAS[fasFilter].label}</b> — ${esc(FAS[fasFilter].desc)}`);
     if (obesvaradFilter) {
       const o = OBESVARAD_LAGE[obesvaradFilter];
       delar.push(`<b>${esc(o.label)}</b> — ${esc(o.desc)}`);
     }
+    if (prioFilter) {
+      delar.push(`<b>prio ${esc(prioFilter)}</b> — poster utan prio faller ur urvalet`);
+    }
     if (delar.length) {
       el.hidden = false;
       el.innerHTML = `Visar bara ${delar.join(' och ')} ` +
-        `Klicka rutan igen, eller «Poster totalt», för att rensa.`;
+        `Klicka valet igen, eller «Alla», för att rensa.`;
     } else {
       el.hidden = true;
       el.innerHTML = '';
@@ -443,7 +613,12 @@
     if (!items.length) { el.innerHTML = tomtHTML(); return; }
     let grupperna_ = [];
     if (grupp === 'tid') {
-      const nycklar = FAS_ORDNING.filter(k => k !== 'levererat' || items.some(i => i.fas === 'levererat'));
+      // Tillstånden får bara en kolumn när något ligger där — utom hinken
+      // snabbvalet pekar på, som alltid står kvar som släppyta. Utan den gick
+      // det inte längre att dra ett kort till «Skippat» sedan det avslutade
+      // blev dolt som förval.
+      const nycklar = FAS_ORDNING.filter(
+        k => !arArkiv(k) || k === SKIPPA.fas || items.some(i => i.fas === k));
       grupperna_ = nycklar.map(k => ({ nyckel: k, label: FAS[k].label, farg: FAS[k].color, items: items.filter(i => i.fas === k) }));
     } else {
       grupperna_ = grupperna(items);
@@ -495,7 +670,8 @@
   }
 
   function ritaAllt() {
-    ritaOversikt(); ritaFilterrad(); ritaKort(); ritaTabell(); ritaKanban(); ritaSokmeta(); visaVy();
+    ritaOversikt(); ritaPrioFilter(); ritaFilterrad();
+    ritaKort(); ritaTabell(); ritaKanban(); ritaSokmeta(); visaVy();
   }
 
   // ── Sökfältet ───────────────────────────────────────────────────
@@ -615,26 +791,62 @@
   });
 
   // ── Mörkt och ljust ─────────────────────────────────────────────
+  /**
+   * Tre lägen, i den ordningen: **läsarens eget val, värdsidans stämpel,
+   * systemets läge.** Ljust ligger i botten av temafilen.
+   *
+   * Det mellersta och det sista är nytt, och det sista fungerade förut inte
+   * alls: `sattTema` stämplade alltid `data-theme` på `<html>`, och den
+   * stämpeln slår ut temafilens `@media (prefers-color-scheme)`. Kommentaren
+   * lovade «annars telefonens läge», men mediefrågan nåddes aldrig.
+   *
+   * Därför stämplas **ingenting** när läsaren inte valt själv — då gäller
+   * temafilens `:root` och dess mediefråga, alltså systemet. Och stämpeln som
+   * redan står på sidan när motorn startar lämnas i fred: en artefaktsida får
+   * den av värden när läsaren gjort ett uttalat temaval där, och att skriva
+   * över den vore att köra över ett val som redan är gjort.
+   */
   const temaMork = document.getElementById('tema-mork');
   const temaLjus = document.getElementById('tema-ljus');
+  const morkMedia = window.matchMedia ? window.matchMedia('(prefers-color-scheme: dark)') : null;
+
+  function visaTemaval(mork) {
+    temaMork.setAttribute('aria-pressed', String(mork));
+    temaLjus.setAttribute('aria-pressed', String(!mork));
+  }
   function sattTema(t, spara) {
     document.documentElement.dataset.theme = t;
-    temaMork.setAttribute('aria-pressed', String(t === 'dark'));
-    temaLjus.setAttribute('aria-pressed', String(t === 'light'));
+    visaTemaval(t === 'dark');
     if (spara) { try { localStorage.setItem(TEMA_NYCKEL, t); } catch (e) { /* strunta */ } }
   }
+  /** Inget val gjort: stämpla ingenting, och låt vippan visa vad systemet gav. */
+  function speglaSystemet() {
+    visaTemaval(!!(morkMedia && morkMedia.matches));
+  }
+  function sparatTema() {
+    try { return localStorage.getItem(TEMA_NYCKEL); } catch (e) { return null; }
+  }
+
   temaMork.addEventListener('click', () => sattTema('dark', true));
   temaLjus.addEventListener('click', () => sattTema('light', true));
 
-  // Läsarens eget val vinner; annars telefonens läge; annars mörkt, som är standard.
-  let tema = null;
-  try { tema = localStorage.getItem(TEMA_NYCKEL); } catch (e) { /* strunta */ }
+  let tema = sparatTema();
   if (tema !== 'dark' && tema !== 'light') {
-    // Standardläget kommer ur temafilen. Läsarens eget val stämplas som
-  // data-theme och vinner över mediefrågan, åt båda hållen.
-    tema = document.documentElement.dataset.theme === 'light' ? 'light' : 'dark';
+    const stampel = document.documentElement.dataset.theme;
+    tema = (stampel === 'dark' || stampel === 'light') ? stampel : null;
   }
-  sattTema(tema, false);
+  if (tema) sattTema(tema, false);
+  else speglaSystemet();
+
+  // Byter läsaren läge i systemet mitt i allt ska vippan sluta ljuga.
+  if (morkMedia && morkMedia.addEventListener) {
+    morkMedia.addEventListener('change', () => {
+      const sparat = sparatTema();
+      if (sparat !== 'dark' && sparat !== 'light' && !document.documentElement.dataset.theme) {
+        speglaSystemet();
+      }
+    });
+  }
 
   // ── Posten, öppnad från sin rubrik ──────────────────────────────
   /**
