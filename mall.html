@@ -6,6 +6,11 @@
      börjar filen på <title> och inte på <!doctype>. -->
 <title>{{TITEL}}</title>
 
+<!-- Vilken motor sidan byggdes med. Sidan publiceras för hand, så det här är
+     enda stället att läsa av om en pinnflytt faktiskt nått läsarna. -->
+<meta name="roadmap-motor" content="{{MOTORVERSION}}">
+<meta name="roadmap-commit" content="{{MOTORCOMMIT}}">
+
 <style>
 {{TYPSNITT}}
 {{TEMA}}
@@ -109,6 +114,7 @@
       Ingenting sparas i sidan: varje ändring blir en prompt som du granskar innan sessionen startar.
     </p>
 {{KALLOR}}
+    <p class="motorstampel">{{MOTORSTAMPEL}}</p>
   </footer>
 </div>
 

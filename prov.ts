@@ -15,8 +15,9 @@
  * alltså tyst tillbaka på systemets snitt, och en sida som ser rätt ut lokalt
  * ser fel ut för alla andra. Det är ett fel som inte hörs när det händer.
  */
-import { readFileSync } from "node:fs";
+import { readFileSync, writeFileSync, mkdirSync, rmSync, existsSync } from "node:fs";
 import { join } from "node:path";
+import { spawnSync } from "node:child_process";
 
 const UT = join(process.cwd(), "exempel/byggd/exempel-roadmap.html");
 
@@ -238,6 +239,75 @@ kontroll("värdens egen stämpel skrivs inte över",
   sida.includes("const stampel = document.documentElement.dataset.theme;"));
 kontroll("vippan slutar ljuga när systemet byter läge",
   sida.includes("morkMedia.addEventListener('change'"));
+
+// Motorstämpeln · vilken motor sidan byggdes med.
+//
+// Sidan publiceras för hand, så en pinnflytt som mergats i konsumenten behöver
+// inte betyda att läsarna sett den. Utan stämpeln fanns ingenstans att läsa av
+// om det steget blivit gjort — man fick öppna sidan och gissa på utseendet.
+const version = (JSON.parse(readFileSync(join(process.cwd(), "package.json"), "utf8")) as { version: string }).version;
+kontroll("sidan bär motorns version", sida.includes(`<meta name="roadmap-motor" content="${version}">`));
+kontroll("sidan bär motorns commit", /<meta name="roadmap-commit" content="[0-9a-f]{7,40}">/.test(sida));
+kontroll("stämpeln syns också för en läsare", /<p class="motorstampel">roadmap-motorn v[\d.]+ · [0-9a-f]{7}<\/p>/.test(sida));
+
+// Och den får inte bära en tidpunkt. Låsfilen spikar pinnen just för att
+// `npm ci` ska ge samma sida i dag som i går; en byggtid i filen hade gjort
+// varje bygge till en ny fil utan att något ändrats. Provas genom att bygga
+// igen och jämföra byte för byte — det är den egenskap som ska gälla, inte
+// frånvaron av något särskilt ord.
+{
+  const tmp = join(process.cwd(), ".prov-tmp");
+  mkdirSync(tmp, { recursive: true });
+  const bygge = JSON.parse(readFileSync(join(process.cwd(), "exempel/bygge.json"), "utf8")) as Record<string, unknown>;
+  bygge.ut = ".prov-tmp/om.html";
+  writeFileSync(join(tmp, "bygge.json"), JSON.stringify(bygge));
+  const r = spawnSync("node_modules/.bin/tsx", ["bygg.ts", ".prov-tmp/bygge.json"], { encoding: "utf8" });
+  const om = r.status === 0 && existsSync(join(tmp, "om.html")) ? readFileSync(join(tmp, "om.html"), "utf8") : "";
+  kontroll("ett ombygge ger exakt samma fil", om === sida,
+    om === "" ? `ombygget gick inte att köra: ${r.stderr?.trim() ?? ""}` : `${om.length} tecken mot ${sida.length}`);
+  rmSync(tmp, { recursive: true, force: true });
+}
+
+// Källkontrollen · pekar varje posts `k` på något som finns?
+//
+// `k` är postens enda väg tillbaka till dokumentet som äger uppgiften, och
+// varje prompt motorn bygger börjar med «läs k». Pekar den fel börjar
+// sessionen med att leta efter en fil som inte finns — ett fel som är osynligt
+// i en grön byggutskrift.
+kontroll("exemplet kör källkontrollen strikt",
+  (JSON.parse(readFileSync(join(process.cwd(), "exempel/bygge.json"), "utf8")) as { kallkontroll?: string })
+    .kallkontroll === "strikt");
+for (const it of ["exempel/docs/exempel.md", "exempel/docs/beslut.md", "exempel/docs/genomfort.md"]) {
+  kontroll(`exemplets källa ${it} finns`, existsSync(join(process.cwd(), it)));
+}
+// Och kontrollen stoppar faktiskt ett bygge. Ett strukturprov hade bara sagt
+// att koden står där; det här säger att den gör något.
+{
+  const tmp = join(process.cwd(), ".prov-tmp");
+  mkdirSync(tmp, { recursive: true });
+  writeFileSync(join(tmp, "data.js"),
+    "const ITEMS = [{ t: 'Trasig källa', d: 'x', fas: 'nartid', omr: 'Produkt', k: 'docs/finns-inte.md' }];");
+  const bygge = JSON.parse(readFileSync(join(process.cwd(), "exempel/bygge.json"), "utf8")) as Record<string, unknown>;
+  bygge.data = ".prov-tmp/data.js";
+  bygge.ut = ".prov-tmp/trasig.html";
+  const kor = (lage: string) => {
+    writeFileSync(join(tmp, "bygge.json"), JSON.stringify({ ...bygge, kallkontroll: lage }));
+    return spawnSync("node_modules/.bin/tsx", ["bygg.ts", ".prov-tmp/bygge.json"], { encoding: "utf8" });
+  };
+  const strikt = kor("strikt");
+  kontroll("strikt läge stannar bygget på en källa som inte finns", strikt.status !== 0,
+    `bygget gick igenom med utfall ${strikt.status}`);
+  kontroll("och säger vilken post det gäller",
+    `${strikt.stdout}${strikt.stderr}`.includes("docs/finns-inte.md"));
+  const varna = kor("varna");
+  kontroll("förvalet varnar men bygger ändå", varna.status === 0,
+    `${varna.stdout}${varna.stderr}`.slice(-300));
+  kontroll("varningen syns i utskriften",
+    `${varna.stdout}${varna.stderr}`.includes("docs/finns-inte.md"));
+  const av = kor("av");
+  kontroll("«av» tiger helt", av.status === 0 && !`${av.stdout}${av.stderr}`.includes("finns-inte"));
+  rmSync(tmp, { recursive: true, force: true });
+}
 
 // Ingenting hämtas utifrån. Tre former, eftersom de blockeras var för sig.
 const externa: string[] = [];

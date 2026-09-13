@@ -36,21 +36,63 @@ jobs:
       commit: ${{ steps.las.outputs.commit }}
       kort: ${{ steps.las.outputs.kort }}
       version: ${{ steps.las.outputs.version }}
+      manuell: ${{ steps.las.outputs.manuell }}
     steps:
       - uses: actions/checkout@v4
         with:
           # Den commit som faktiskt provades — inte «senaste på main», som
           # hinner bli en annan om två merger ligger tätt.
           ref: ${{ github.event.workflow_run.head_sha || github.sha }}
+      # Nyckeln prövas här, en gång, och inte en gång per konsument längre
+      # ner. En utgången PAT gav förut tre identiska «Bad credentials» ur
+      # actions/checkout, med orsaken begravd i en logg — felet sa vad som
+      # gick sönder men aldrig vad som var fel.
+      - name: Pröva nyckeln
+        env:
+          GH_TOKEN: ${{ secrets.PINNFLYTT_TOKEN }}
+        run: |
+          set -uo pipefail
+          if [ -z "${GH_TOKEN}" ]; then
+            echo "::error::PINNFLYTT_TOKEN saknas. Se CLAUDE.md, «Skydd och nycklar på main»." >&2
+            exit 1
+          fi
+          svar=$(gh api -i /rate_limit 2>&1) || {
+            echo "::error::PINNFLYTT_TOKEN underkänns av GitHub — förnya den. Se CLAUDE.md, «Skydd och nycklar på main». En fine-grained PAT löper ut, och kräver dessutom godkännande om organisationen begär det." >&2
+            exit 1
+          }
+          # Varna i tid. Rubriken följer med varje autentiserat REST-svar, och
+          # saknas den är det inget fel — en GitHub App-token har ingen.
+          slut=$(printf '%s' "$svar" | tr -d '\r' \
+            | sed -n 's/^[Gg][Ii][Tt][Hh][Uu][Bb]-[Aa]uthentication-[Tt]oken-[Ee]xpiration: *//p' | head -1)
+          if [ -n "$slut" ]; then
+            kvar=$(( ( $(date -d "$slut" +%s) - $(date +%s) ) / 86400 ))
+            echo "PINNFLYTT_TOKEN går ut $slut ($kvar dagar kvar)."
+            if [ "$kvar" -lt 21 ]; then
+              echo "::warning::PINNFLYTT_TOKEN går ut om $kvar dagar ($slut). Förnya den innan pinnflytten står still."
+            fi
+          fi
+
       - id: las
         run: |
           set -euo pipefail
           sha="${{ github.event.workflow_run.head_sha || github.sha }}"
+          # En ändring som bryter motorns kontrakt mot konsumenterna ska nå
+          # dem som en PR att läsa, inte som en merge inom minuter. Trailern
+          # `Pinnflytt: manuell` i commit-meddelandet stänger av auto-merge
+          # för just den flytten. main squash-mergas, så det är squash-
+          # commitens meddelande som räknas — alltså PR-beskrivningen.
+          if git log -1 --format=%B "$sha" | grep -qiE '^Pinnflytt:[[:space:]]*manuell[[:space:]]*$'; then
+            manuell=ja
+            echo "::notice::Commiten bär «Pinnflytt: manuell» — PR:erna öppnas utan auto-merge."
+          else
+            manuell=nej
+          fi
           {
             echo "konsumenter=$(jq -c '.konsumenter' konsumenter.json)"
             echo "commit=$sha"
             echo "kort=${sha:0:7}"
             echo "version=$(jq -r .version package.json)"
+            echo "manuell=$manuell"
           } >> "$GITHUB_OUTPUT"
 
   flytta:
@@ -61,15 +103,6 @@ jobs:
       matrix:
         k: ${{ fromJSON(needs.lista.outputs.konsumenter) }}
     steps:
-      - name: Kontrollera att nyckeln finns
-        env:
-          TOKEN: ${{ secrets.PINNFLYTT_TOKEN }}
-        run: |
-          if [ -z "${TOKEN}" ]; then
-            echo "::error::PINNFLYTT_TOKEN saknas. Se CLAUDE.md, «Skydd och nycklar på main»." >&2
-            exit 1
-          fi
-
       - name: Hämta konsumenten
         uses: actions/checkout@v4
         with:
@@ -133,6 +166,34 @@ jobs:
             echo "fran=$nu"
           } >> "$GITHUB_OUTPUT"
 
+      # Motorn provas mot exempel/ i sitt eget repo, aldrig mot de tre
+      # riktiga konfigarna. En kontraktsändring upptäcktes därför först när
+      # någon körde bygget i konsumenten — alltså i det manuella sista steget,
+      # efter att den här PR:en redan mergats. Nu byggs sidan här, med den nya
+      # motorn, innan PR:en finns. Går bygget inte igenom öppnas ingen PR.
+      - name: Bygg konsumentens sida med den nya motorn
+        id: bygg
+        if: steps.pin.outputs.gor == 'ja'
+        working-directory: konsument
+        env:
+          BYGG: ${{ matrix.k.bygg }}
+          REPO: ${{ matrix.k.repo }}
+        run: |
+          set -uo pipefail
+          ok=ja
+          # Byggkommandot kommer ur konsumenter.json och går genom env, aldrig
+          # in i skriptets text — samma regel som för resten av värdena här.
+          { npm ci --ignore-scripts --no-audit --no-fund && sh -c "$BYGG"; } \
+            > /tmp/bygg.log 2>&1 || ok=nej
+          tail -40 /tmp/bygg.log
+          if [ "$ok" = nej ]; then
+            echo "::error::$REPO bygger inte med motorn på den här commiten. Ingen PR öppnas — utan den här kontrollen hade pinnen gått in och gått sönder först vid publiceringen." >&2
+            exit 1
+          fi
+          # Den byggda sidan är härledd och ska inte med i commiten. Nästa steg
+          # stagear bara package.json och package-lock.json, så den blir kvar
+          # som en ospårad fil på runnern och följer inte med någonstans.
+
       - name: Öppna eller uppdatera PR:en
         if: steps.pin.outputs.gor == 'ja'
         working-directory: konsument
@@ -146,6 +207,7 @@ jobs:
           ARTEFAKT: ${{ matrix.k.artefakt }}
           BYGG: ${{ matrix.k.bygg }}
           AUTOMERGE: ${{ matrix.k.automerge }}
+          MANUELL: ${{ needs.lista.outputs.manuell }}
         run: |
           set -euo pipefail
           gren=roadmap/pinnflytt
@@ -189,16 +251,34 @@ jobs:
           1. `{BYGG}`
           2. Publicera med Artifact-verktyget **med `url={ARTEFAKT}`** — utan `url` skapas en ny artefakt, och den länk som redan delats slutar uppdateras.
 
-          Motorns egna kontroller (`prov`) var gröna på {KORT} innan den här PR:en öppnades. Vad som ändrats står i motorns [README](https://github.com/Go-Upstream/roadmap/blob/main/README.md).
-
-          ---
-          _Generated by [Claude Code](https://claude.ai/code)_
+          Motorns egna kontroller (`prov`) var gröna på {KORT}, och **`{BYGG}` kördes mot just den här pinnen** innan PR:en öppnades — så sidan går att bygga. Vad som ändrats står i motorns [README](https://github.com/Go-Upstream/roadmap/blob/main/README.md).
           TEXT
 
           # `|` som avgränsare: hasharna och url:erna innehåller `/`, aldrig `|`.
           for p in KORT COMMIT VERSION FRAN BYGG ARTEFAKT; do
             sed -i "s|{$p}|${!p}|g" /tmp/kropp.md
           done
+
+          # Bygglogg och fot läggs på efteråt: loggen är flerradig och går inte
+          # genom en sed-substitution, och foten ska stå sist av allt.
+          {
+            echo
+            echo "<details><summary>Byggutskriften</summary>"
+            echo
+            echo '```'
+            tail -25 /tmp/bygg.log
+            echo '```'
+            echo
+            echo "Varningar om källor som inte finns, eller källdokument som ändrats efter posternas fil, står här. De stoppar inte bygget — men de säger vad som hunnit bli inaktuellt sedan sidan sist byggdes."
+            echo "</details>"
+            if [ "$MANUELL" = ja ]; then
+              echo
+              echo "> **Auto-merge är avstängd för den här flytten.** Motorcommiten bär \`Pinnflytt: manuell\`, vilket den gör när ändringen rör motorns kontrakt mot projekten — fältnamn i posterna, CSS-klasser ett tema riktar sig mot, eller mallens platshållare. Läs motorns PR innan du mergar den här."
+            fi
+            echo
+            echo "---"
+            echo "_Generated by [Claude Code](https://claude.ai/code)_"
+          } >> /tmp/kropp.md
 
           titel="Flytta roadmap-motorn till $KORT (v$VERSION)"
           if gh pr view "$gren" --repo "$REPO" >/dev/null 2>&1; then
@@ -208,7 +288,12 @@ jobs:
               --title "$titel" --body-file /tmp/kropp.md
           fi
 
-          if [ "$AUTOMERGE" = "true" ]; then
+          if [ "$MANUELL" = ja ]; then
+            # Trailern i motorcommiten väger tyngre än konsumentens automerge.
+            # En kontraktsändring ska läsas av någon innan den når tre projekt,
+            # och det beslutet hör till ändringen — inte till projektet.
+            echo "::notice::«Pinnflytt: manuell» — PR:en i $REPO lämnas öppen för granskning."
+          elif [ "$AUTOMERGE" = "true" ]; then
             # Faller repot saknar auto-merge påslaget: PR:en står kvar öppen,
             # vilket är rätt utfall och inte ett fel i den här körningen.
             gh pr merge "$gren" --repo "$REPO" --squash --auto \

@@ -33,6 +33,14 @@ i README.
   (fältnamn i posterna, CSS-klasser temafilerna riktar sig mot, mallens
   platshållare). Den sortens PR lämnas åt ägaren; nu är skälet inte att nästa
   pinnflytt ärver överraskningen utan att den kommer inom minuter.
+
+- **En kontraktsändring bär `Pinnflytt: manuell`.** Raden skrivs sist i
+  PR-beskrivningen — `main` squash-mergas, så det är den texten som blir
+  commit-meddelandet pinnflytten läser — och gör att pinnflyttens PR:er öppnas
+  **utan auto-merge i alla konsumenter**, oavsett vad `automerge` säger i
+  `konsumenter.json`. Beslutet hör till ändringen och inte till projektet, och
+  det ska inte bero på att någon kommer ihåg att låta bli att trycka. Sätt den
+  på samma PR:er som föregående punkt lämnar åt ägaren.
 - **En «release» sker av sig själv.** `Pinnflytt` öppnar PR:en i varje
   konsument; skriv inte hashar för hand. Bumpa `version` här vid
   beteendeändringar — numret är lässtöd och står i pinnflyttens PR-titel. Det
@@ -50,10 +58,18 @@ i README.
 **Nyckeln pinnflytten behöver:** en fine-grained PAT med *Contents: read and
 write* och *Pull requests: read and write* på varje repo i
 `konsumenter.json`, lagd som hemligheten **`PINNFLYTT_TOKEN`** under
-*Settings → Secrets and variables → Actions*. Utan den stannar arbetsflödet
-på första steget med just det felmeddelandet i stället för att falla någonstans
-längre in. Slå också på *Allow auto-merge* i varje konsumentrepo, annars står
-pinnflyttens PR öppen och väntar på en tryckning.
+*Settings → Secrets and variables → Actions*. **Resource owner ska vara
+`Go-Upstream`**, inte ett personkonto — en PAT med fel ägare når aldrig
+organisationens privata repon, hur rätt rättigheterna än är satt. Slå också på
+*Allow auto-merge* i varje konsumentrepo, annars står pinnflyttens PR öppen och
+väntar på en tryckning.
+
+Steget *Pröva nyckeln* i `lista` gör tre saker innan något annat händer: det
+säger ifrån om hemligheten saknas, det säger ifrån om GitHub underkänner den
+(**en fine-grained PAT löper ut** — förnya den, och godkänn den i
+organisationen om den kräver det), och det varnar när mindre än tre veckor
+återstår av dess livslängd. Kontrollen sitter där och inte i matrisen, så ett
+nyckelfel blir ett fel och inte tre identiska.
 
 Repot är publikt och konsumenterna privata. Därför har `pinnflytt.yml` ingen
 `pull_request`-utlösare: en gren från en fork skulle annars kunna nå nyckeln.
