@@ -28,11 +28,15 @@ i README.
 - **Auto-merge får användas brett här — men väg in att merge nu betyder
   pinnflytt nu.** En merge till `main` driftsätter fortfarande ingenting av
   sig självt: pinnflyttens PR går in i projektet, men sidan de läser byter
-  först när någon bygger om och publicerar. Slå på auto-merge när PR:en är
-  grön — utom när ändringen bryter motorns kontrakt mot projekten
-  (fältnamn i posterna, CSS-klasser temafilerna riktar sig mot, mallens
-  platshållare). Den sortens PR lämnas åt ägaren; nu är skälet inte att nästa
-  pinnflytt ärver överraskningen utan att den kommer inom minuter.
+  först när någon bygger om och publicerar. Sessionen som öppnar PR:en
+  armerar auto-merge själv, **direkt vid öppnandet**
+  (`mcp__github__enable_pr_auto_merge`, squash) — medan kontrollen kör:
+  knappen försvinner när PR:en väl är grön, och utan armering mergas
+  ingenting av sig själv. Undantaget är ändringar som bryter motorns kontrakt
+  mot projekten (fältnamn i posterna, CSS-klasser temafilerna riktar sig mot,
+  mallens platshållare). Den sortens PR lämnas grön åt ägaren; nu är skälet
+  inte att nästa pinnflytt ärver överraskningen utan att den kommer inom
+  minuter.
 
 - **En kontraktsändring bär `Pinnflytt: manuell`.** Raden skrivs sist i
   PR-beskrivningen — `main` squash-mergas, så det är den texten som blir
